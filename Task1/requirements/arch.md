@@ -122,13 +122,13 @@ Task1/                                       assignment root for code, docs, and
 │   ├── diagnose_cluster.sh                  target-cluster diagnostic shell probe
 │   └── Assets/                              provided stopwords, dev data shards, and helper script
 ├── src/                                     implementation code and runnable entry points
-│   ├── settings.py                          shared constants for paths, tags, limits, and defaults
-│   ├── common.py                            shared parsing, tokenization, scoring, and formatting helpers
-│   ├── job_count_stats.py                   first mrjob stage for N, Nc, Nt, and Ntc counts
-│   ├── job_score_topk.py                    second mrjob stage for chi-square scoring and top-k selection
-│   ├── build_output.py                      metadata extraction, final formatting, and packaging helpers
-│   ├── run_pipeline.sh                      main local and Hadoop orchestration entry point
-│   ├── run_local_debug.sh                   fast local smoke-run wrapper for dev inputs
+│   ├── settings.py [R]                      shared constants for paths, tags, limits, and defaults
+│   ├── common.py [R]                        shared parsing, tokenization, scoring, and formatting helpers
+│   ├── job_count_stats.py [R]               first mrjob stage for N, Nc, Nt, and Ntc counts
+│   ├── job_score_topk.py [R]                second mrjob stage for chi-square scoring and top-k selection
+│   ├── build_output.py [R]                  metadata extraction, final formatting, and packaging helpers
+│   ├── run_pipeline.sh [R]                  main local and Hadoop orchestration entry point
+│   ├── run_local_debug.sh [R]               fast local smoke-run wrapper for dev inputs
 │   └── tests/                               narrow local validation and smoke tests
 │       ├── test_common.py                   tests for tokenization, filtering, and score helpers
 │       ├── test_chi_square.py               tests for ranking order and top-k retention behavior

@@ -1,23 +1,21 @@
 #!/usr/bin/env bash
-
-# Input: optional local paths overriding the default split dev files.
-# Output: local smoke-test artifacts and exit status.
-# Purpose: provide the fastest local debug entry point before Hadoop runs.
+# Quick local smoke run against the four dev shards.
+# Output lands in /tmp/dic_debug_out unless overridden with --output DIR.
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 run_local_debug() {
-  # Input: local file paths and temporary output destinations.
-  # Output: local pipeline artifacts.
-  # Purpose: execute the pipeline with the local runner and development shards.
-  :
+  local outdir="${1:-/tmp/dic_debug_out}"
+  rm -rf "$outdir"
+  bash "$SCRIPT_DIR/run_pipeline.sh" --output "$outdir"
+  echo "--- first 3 lines of output.txt ---"
+  head -n 3 "$outdir/output.txt"
 }
 
 main() {
-  # Input: shell command-line arguments.
-  # Output: script exit status.
-  # Purpose: expose a simple wrapper for local smoke testing.
-  :
+  run_local_debug "${1:-}"
 }
 
 main "$@"

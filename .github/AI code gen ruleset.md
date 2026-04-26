@@ -82,6 +82,35 @@ for key in items:
 ### 10. Mix Coding Styles Slightly
 Minor variation in formatting or structure is acceptable. Avoid rigid, repeated templates.
 
+### 12. Use Impersonal Voice in Comments
+Avoid first-person pronouns such as "we", "I", or "our" in comments. Use indirect or passive constructions instead.
+
+Good
+```python
+# one heap per category, filled as each term group is processed
+```
+Bad
+```python
+# one heap per category, filled as we process each term group
+```
+
+### 11. Use Compact Single-Line Guards
+Write single-statement conditionals on one line. No blank line before or after guard blocks.
+
+Good
+```python
+if x is None: return
+if denom == 0: return 0.0
+```
+Bad
+```python
+if x is None:
+    return
+
+if denom == 0:
+    return 0.0
+```
+
 ---
 
 ## DON'Ts
@@ -140,4 +169,6 @@ Before finalizing code, verify:
  - Stubbed function specs use the multiline signature comment template
  - Inline signature comments are aligned to the widest signature line plus 4 spaces
  - Block comments sit above control structures and inline comments are kept for expressions
+ - Single-statement guards are written on one line
+ - Comments use impersonal voice, no "we" or "I"
  - Code is slightly irregular but still clear

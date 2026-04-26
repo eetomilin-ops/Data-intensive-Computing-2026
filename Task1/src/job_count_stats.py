@@ -1,65 +1,56 @@
-"""First mrjob stage for raw document counting."""
-
-from typing import Iterable
-
+from mrjob.job import MRJob
+from mrjob.step import MRStep
 from common import (
-    compile_tokenizer,
-    extract_required_fields,
-    filter_tokens,
-    load_stopwords,
-    safe_parse_review,
-    unique_terms_for_document,
+    compile_tokenizer, extract_required_fields, filter_tokens,
+    load_stopwords, safe_parse_review, unique_terms_for_document,
 )
 from settings import (
-    COUNTER_TAG_CATEGORY_DOCS,
-    COUNTER_TAG_TERM_CATEGORY_DOCS,
-    COUNTER_TAG_TERM_DOCS,
-    COUNTER_TAG_TOTAL_DOCS,
-    STOPWORDS_PATH,
+    COUNTER_TAG_CATEGORY_DOCS, COUNTER_TAG_TERM_CATEGORY_DOCS,
+    COUNTER_TAG_TERM_DOCS, COUNTER_TAG_TOTAL_DOCS,
 )
 
+# emitted key shapes:
+#   (N,)          -> global doc count
+#   (NC, cat)     -> docs in category
+#   (NT, term)    -> docs containing term (across all categories)
+#   (NTC, cat, term) -> docs in category containing term
+class CountStatsJob(MRJob):
+    def steps(self):
+        return [MRStep(
+            mapper_init=self.mapper_init,
+            mapper=self.mapper,
+            combiner=self.combiner,
+            reducer=self.reducer,
+        )]
 
-DEFAULT_STOPWORDS_PATH = STOPWORDS_PATH
-COUNT_COUNTER_TAGS = (
-    COUNTER_TAG_TOTAL_DOCS,
-    COUNTER_TAG_CATEGORY_DOCS,
-    COUNTER_TAG_TERM_DOCS,
-    COUNTER_TAG_TERM_CATEGORY_DOCS,
-)
+    def mapper_init(self):
+        # load once per mapper process, not once per line
+        self.stopwords = load_stopwords()
+        self.split     = compile_tokenizer()
 
+    def mapper(self, _, line):
+        review = safe_parse_review(line)
+        if review is None: return
+        parsed = extract_required_fields(review)
+        if parsed is None: return
+        cat, text = parsed
+        terms = unique_terms_for_document(
+            filter_tokens(
+                [t.lower() for t in self.split(text) if t],
+                self.stopwords,
+            )
+        )
+        yield (COUNTER_TAG_TOTAL_DOCS,), 1
+        yield (COUNTER_TAG_CATEGORY_DOCS, cat), 1
+        for term in terms:
+            yield (COUNTER_TAG_TERM_DOCS, term), 1
+            yield (COUNTER_TAG_TERM_CATEGORY_DOCS, cat, term), 1
 
-class CountStatsJob:
-    """Input: raw review lines from local files or HDFS.
-    Output: tagged count records for global, category, term, and term-category statistics.
-    Purpose: aggregate all required count statistics in a single raw-data scan.
-    """
+    def combiner(self, key, values):
+        yield key, sum(values)
 
-    # warm up mapper state once instead of per review line
-    def mapper_init(
-        self: "CountStatsJob",    # current job instance
-    ) -> None:                    # mapper state prepared in-place
-        pass
+    def reducer(self, key, values):
+        yield key, sum(values)
 
-    # emit the compact count tags from one review
-    def mapper(
-        self: "CountStatsJob",                         # current job instance
-        _: object,                                      # unused streaming key
-        line: str,                                      # raw review line from input
-    ) -> Iterable[tuple[tuple[str, ...], int]]:        # tagged count stream
-        pass
-
-    # shrink shuffle traffic before the reducer sees the data
-    def combiner(
-        self: "CountStatsJob",                               # current job instance
-        key: tuple[str, ...],                                 # tagged count key
-        values: Iterable[int],                                # partial counts for the key
-    ) -> Iterable[tuple[tuple[str, ...], int]]:              # locally summed counts
-        pass
-
-    # finalize the count records that later stages consume
-    def reducer(
-        self: "CountStatsJob",                               # current job instance
-        key: tuple[str, ...],                                 # tagged count key
-        values: Iterable[int],                                # combined counts for the key
-    ) -> Iterable[tuple[tuple[str, ...], int]]:              # final count records
-        pass
+if __name__ == "__main__":
+    CountStatsJob.run()

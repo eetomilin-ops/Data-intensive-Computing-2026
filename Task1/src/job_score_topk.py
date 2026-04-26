@@ -1,45 +1,79 @@
-"""Second mrjob stage for chi-square scoring and top-k selection."""
+import json
+from mrjob.job import MRJob
+from mrjob.step import MRStep
+from common import compute_chi_square, format_term_score, update_top_k
+from settings import (
+    COUNTER_TAG_CATEGORY_DOCS, COUNTER_TAG_TERM_CATEGORY_DOCS,
+    COUNTER_TAG_TERM_DOCS, COUNTER_TAG_TOTAL_DOCS, DEFAULT_META_FILENAME,
+)
 
-from typing import Iterable
+# this job reads the count output from CountStatsJob and a small meta.json
+# that carries N and all Nc values (written between the two jobs by build_output).
+#
+# mapper re-keys records so the reducer can group NT and NTC together per term:
+#   NT  records  -> keyed by term        so the reducer sees all categories for that term
+#   NTC records  -> keyed by term        joined with NT in the same reduce group
+#   N / NC are loaded from meta.json before the reduce phase, not shuffled
+#
+# reducer emits: (category, "term:score") for each term in each category
+# reducer_final flushes the bounded heaps as final ranked lines
+class ScoreTopKJob(MRJob):
+    def configure_args(self):
+        super().configure_args()
+        self.add_file_arg("--meta", help="path to meta.json from CountStatsJob")
 
-from common import compute_chi_square, update_top_k
-from settings import DEFAULT_META_FILENAME, TOP_K_TERMS
+    def steps(self):
+        return [MRStep(
+            mapper=self.mapper,
+            reducer_init=self.reducer_init,
+            reducer=self.reducer,
+            reducer_final=self.reducer_final,
+        )]
 
+    def mapper(self, _, line):
+        try:
+            key, value = json.loads(line)
+        except (ValueError, TypeError): return
+        tag = key[0]
+        if tag == COUNTER_TAG_TERM_DOCS:
+            # re-key by term so NT and NTC land in the same reducer group
+            term = key[1]
+            yield term, (COUNTER_TAG_TERM_DOCS, None, int(value))
+        elif tag == COUNTER_TAG_TERM_CATEGORY_DOCS:
+            cat, term = key[1], key[2]
+            yield term, (COUNTER_TAG_TERM_CATEGORY_DOCS, cat, int(value))
 
-DEFAULT_META_FILENAME = DEFAULT_META_FILENAME
-DEFAULT_TOP_K_TERMS = TOP_K_TERMS
+    def reducer_init(self):
+        with open(self.options.meta, encoding="utf-8") as f:
+            meta = json.load(f)
+        self.N      = meta["N"]                     # total docs
+        self.Nc     = meta["Nc"]                    # {category: doc_count}
+        # one heap per category, filled as each term group is processed
+        self.heaps  = {cat: [] for cat in self.Nc}
 
+    def reducer(self, term, values):
+        Nt   = 0
+        ntcs = {}
+        for tag, cat, count in values:
+            if tag == COUNTER_TAG_TERM_DOCS:
+                Nt = count
+            else:
+                ntcs[cat] = count
+        # score this term against every category where it appeared
+        for cat, Ntc in ntcs.items():
+            if cat not in self.heaps: continue
+            score = compute_chi_square(self.N, self.Nc[cat], Nt, Ntc)
+            update_top_k(self.heaps[cat], score, term)
+        return
+        yield  # make this a generator so mrjob treats it correctly
 
-class ScoreTopKJob:
-    """Input: aggregated count records plus small metadata for total and category counts.
-    Output: top-ranked term lists per category.
-    Purpose: compute chi-square scores and keep only the best 75 terms per category.
-    """
+    def reducer_final(self):
+        for cat in sorted(self.heaps):
+            heap = self.heaps[cat]
+            # sort descending by score for the output line
+            ranked = sorted(heap, key=lambda x: x[0], reverse=True)
+            terms_str = " ".join(format_term_score(t, s) for s, t in ranked)
+            yield cat, terms_str
 
-    # reshape count output into something the reducer can join cheaply
-    def mapper(
-        self: "ScoreTopKJob",                         # current job instance
-        _: object,                                     # unused streaming key
-        line: str,                                     # serialized count record
-    ) -> Iterable[tuple[str, tuple[str, str, int]]]:  # keyed score input tuples
-        pass
-
-    # initialize reducer-side metadata once for the whole partition
-    def reducer_init(
-        self: "ScoreTopKJob",       # current job instance
-    ) -> None:                       # reducer state prepared in-place
-        pass
-
-    # join the grouped counts and emit scored candidates
-    def reducer(
-        self: "ScoreTopKJob",                           # current job instance
-        key: str,                                        # reducer grouping key
-        values: Iterable[tuple[str, str, int]],          # grouped count tuples
-    ) -> Iterable[tuple[str, tuple[str, float]]]:       # scored term tuples
-        pass
-
-    # flush the bounded heaps after all grouped values are consumed
-    def reducer_final(
-        self: "ScoreTopKJob",                      # current job instance
-    ) -> Iterable[tuple[str, list[tuple[str, float]]]]:    # top-75 lists by category
-        pass
+if __name__ == "__main__":
+    ScoreTopKJob.run()
