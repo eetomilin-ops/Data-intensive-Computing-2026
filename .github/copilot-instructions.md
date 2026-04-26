@@ -1,0 +1,35 @@
+# Project Guidelines
+
+## Scope
+These instructions apply to the whole workspace.
+
+## Target
+- Target runtime is the LBD public Hadoop cluster via JupyterLab shell.
+- Target Python version is 3.12.x.
+- Target Hadoop and HDFS client version is 3.3.6.
+- Target `mrjob` version is 0.7.4.
+
+## Architecture
+- Keep the Task 1 implementation aligned with [Task1/requirements/Requiremnts.md](Task1/requirements/Requiremnts.md) and [Task1/requirements/arch.md](Task1/requirements/arch.md).
+- Use `src/settings.py` as the single source for shared constants such as paths, counters, tokenization rules, and defaults.
+- Preserve the planned file layout under `Task1/src/` unless a task explicitly requires changing it.
+
+## Task 1 Rules
+- Implement chi-square feature selection with document-presence semantics, not raw term-frequency semantics.
+- Deduplicate terms per review document before emitting term counts.
+- Keep the final output format exact: one alphabetical category line with top 75 terms per category, plus one merged alphabetical dictionary line.
+- Keep all project paths relative in submitted code and parameterize HDFS input paths.
+- Prefer one raw-data scan for counting, aggressive combiner use, compact key/value emissions, and bounded top-k selection.
+
+## Dependencies
+- Prefer Python standard library plus `mrjob` only.
+- Do not introduce `pandas`, `numpy`, `scipy`, Spark, or heavyweight text-processing libraries unless explicitly requested.
+
+## Code Style
+- Keep edits minimal and focused.
+- Document non-obvious method signatures, key/value pairs, and MapReduce stage roles.
+- Reuse the explicit function names and file mappings already documented in `arch.md`.
+
+## Validation
+- Prefer local validation on the provided development shards before assuming cluster runs.
+- When adding or changing Python code, keep it compatible with the verified 3.12 target.
