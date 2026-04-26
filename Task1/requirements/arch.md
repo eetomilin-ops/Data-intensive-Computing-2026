@@ -178,3 +178,47 @@ Option A is the best tradeoff for this assignment. It minimizes full-dataset sca
 - Use the provided split dev files as the default smoke-test input set.
 - Add a very small fixture with known expected chi-square ordering to validate correctness before scale tests.
 - Only switch to the full HDFS path after local correctness and one small-cluster sanity run are stable.
+
+## 8. Textual Function Dependency Tree
+
+```text
+run_pipeline.sh
+`-- main
+    |-- parse_args
+    |-- resolve_mode
+    `-- run_pipeline
+        |-- CountStatsJob.mapper_init
+        |   |-- load_stopwords
+        |   `-- compile_tokenizer
+        |-- CountStatsJob.mapper
+        |   |-- safe_parse_review
+        |   |-- extract_required_fields
+        |   |-- tokenize
+        |   |-- filter_tokens
+        |   `-- unique_terms_for_document
+        |-- CountStatsJob.combiner
+        |-- CountStatsJob.reducer
+        |-- extract_meta_counts
+        |-- write_meta_json
+        |-- ScoreTopKJob.mapper
+        |-- ScoreTopKJob.reducer_init
+        |-- ScoreTopKJob.reducer
+        |   |-- compute_chi_square
+        |   `-- update_top_k
+        |-- ScoreTopKJob.reducer_final
+        |-- build_output.main
+        |   |-- read_ranked_terms
+        |   |-- format_category_line
+        |   |-- merge_dictionary
+        |   `-- write_output
+        `-- package_submission
+
+run_local_debug.sh
+`-- main
+    `-- run_local_debug
+        `-- run_pipeline.sh main (local mode)
+
+tests/test_smoke_local.py
+`-- run_smoke_case
+    `-- run_local_debug.sh main
+```

@@ -2,7 +2,6 @@
 
 from pathlib import Path
 from typing import Any
-
 from settings import DEFAULT_META_FILENAME, DEFAULT_OUTPUT_FILENAME, DEFAULT_RANKED_DIRNAME, TARGET_PLATFORM
 
 
