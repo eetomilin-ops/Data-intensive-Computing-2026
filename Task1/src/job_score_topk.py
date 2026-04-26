@@ -32,7 +32,9 @@ class ScoreTopKJob(MRJob):
 
     def mapper(self, _, line):
         try:
-            key, value = json.loads(line)
+            raw_key, raw_value = line.split("\t", 1)
+            key   = json.loads(raw_key)
+            value = json.loads(raw_value)
         except (ValueError, TypeError): return
         tag = key[0]
         if tag == COUNTER_TAG_TERM_DOCS:

@@ -21,7 +21,9 @@ def extract_meta_counts(counts_path: str | Path) -> dict[str, Any]:
             for line in f:
                 line = line.strip()
                 if not line: continue
-                key, value = json.loads(line)
+                raw_key, raw_value = line.split("\t", 1)
+                key = json.loads(raw_key)
+                value = json.loads(raw_value)
                 tag = key[0]
                 if tag == COUNTER_TAG_TOTAL_DOCS:
                     meta["N"] += int(value)
@@ -46,7 +48,9 @@ def read_ranked_terms(ranked_path: str | Path) -> dict[str, list[tuple[str, floa
             for line in f:
                 line = line.strip()
                 if not line: continue
-                cat, terms_str = json.loads(line)
+                raw_key, raw_value = line.split("\t", 1)
+                cat = json.loads(raw_key)
+                terms_str = json.loads(raw_value)
                 pairs = []
                 for fragment in terms_str.split():
                     term, score = fragment.rsplit(":", 1)

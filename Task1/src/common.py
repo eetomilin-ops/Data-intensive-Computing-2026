@@ -1,8 +1,9 @@
+from __future__ import annotations
 import json
 import re
 import heapq
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, Union
 from settings import MIN_TOKEN_LENGTH, STOPWORDS_PATH, TOKEN_DELIMITER_PATTERN, TOP_K_TERMS
 
 def load_stopwords(path: str | Path = STOPWORDS_PATH) -> set[str]:

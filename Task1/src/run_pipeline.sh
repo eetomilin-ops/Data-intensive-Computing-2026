@@ -30,13 +30,15 @@ parse_args() {
 
 resolve_mode() {
   if [[ "$RUNNER" == "local" && -z "$INPUT" ]]; then
-    # join the four dev shards into a comma-separated list for mrjob
-    INPUT=$(printf '%s,' \
-      "$SCRIPT_DIR/../requirements/Assets/reviews_devset.part_1.json" \
-      "$SCRIPT_DIR/../requirements/Assets/reviews_devset.part_2.json" \
-      "$SCRIPT_DIR/../requirements/Assets/reviews_devset.part_3.json" \
-      "$SCRIPT_DIR/../requirements/Assets/reviews_devset.part_4.json")
-    INPUT="${INPUT%,}"  # strip trailing comma
+    # build array so mrjob receives each shard as a separate positional arg
+    INPUT_ARGS=(
+      "$SCRIPT_DIR/../requirements/Assets/reviews_devset.part_1.json"
+      "$SCRIPT_DIR/../requirements/Assets/reviews_devset.part_2.json"
+      "$SCRIPT_DIR/../requirements/Assets/reviews_devset.part_3.json"
+      "$SCRIPT_DIR/../requirements/Assets/reviews_devset.part_4.json"
+    )
+  else
+    INPUT_ARGS=("$INPUT")
   fi
 }
 
@@ -59,8 +61,9 @@ run_pipeline() {
   echo "=== stage 1: count stats (runner=$RUNNER) ==="
   if ! python3 "$SCRIPT_DIR/job_count_stats.py" \
       -r "$RUNNER" \
+      --files "$SCRIPT_DIR/common.py,$SCRIPT_DIR/settings.py,$SCRIPT_DIR/../requirements/Assets/stopwords.txt" \
       --output-dir "$COUNTS_DIR" \
-      $INPUT; then
+      "${INPUT_ARGS[@]}"; then
     echo "ERROR: stage 1 exited non-zero" >&2
     exit 1
   fi
@@ -83,6 +86,7 @@ run_pipeline() {
   echo "=== stage 2: score top-k (runner=$RUNNER) ==="
   if ! python3 "$SCRIPT_DIR/job_score_topk.py" \
       -r "$RUNNER" \
+      --files "$SCRIPT_DIR/common.py,$SCRIPT_DIR/settings.py,$SCRIPT_DIR/../requirements/Assets/stopwords.txt" \
       --meta   "$META_FILE" \
       --output-dir "$RANKED_DIR" \
       "$COUNTS_DIR"; then
