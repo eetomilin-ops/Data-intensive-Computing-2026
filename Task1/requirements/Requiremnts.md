@@ -7,6 +7,8 @@
 6. Report requirements
 7. Implementation constraints
 8. Scoring and deadline
+9. Verified target environment
+10. Planned source layout
 
 
 **req1**
@@ -81,3 +83,22 @@ The provided local assets include four split dev-set files and a helper script s
 
 **req8**
 Conform to the task description and requirements stated in Assignment_1_Instructions.pdf.
+
+**req9**
+Target platform is the LBD public Hadoop cluster accessed through a JupyterLab shell.
+Verified target Python version is 3.12.3.
+Verified target mrjob version is 0.7.4.
+Verified target Hadoop and HDFS client version is 3.3.6.
+Use Python 3.12 compatible code for implementation and local validation.
+Assume the target shell environment is Linux with bash available.
+The Jupyter shell currently exposes 16 CPUs and about 61 GiB RAM, but final design should still prioritize Hadoop job efficiency over local machine capacity.
+
+**req10**
+Planned source tree must include src/settings.py for shared constants used by all jobs and scripts.
+Planned source tree must include src/common.py for parsing, tokenization, scoring, and formatting helpers.
+Planned source tree must include src/job_count_stats.py for the first mrjob counting stage.
+Planned source tree must include src/job_score_topk.py for the chi-square scoring and top-k stage.
+Planned source tree must include src/build_output.py for metadata extraction, output formatting, and packaging helpers.
+Planned source tree must include src/run_pipeline.sh for cluster and local orchestration.
+Planned source tree must include src/run_local_debug.sh for fast local smoke runs.
+Planned source tree may include src/tests/ for narrow local validation.

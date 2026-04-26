@@ -3,6 +3,14 @@
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
+from settings import MIN_TOKEN_LENGTH, STOPWORDS_PATH, TOKEN_DELIMITER_PATTERN, TOP_K_TERMS
+
+
+DEFAULT_STOPWORDS_PATH = STOPWORDS_PATH
+DEFAULT_MIN_TOKEN_LENGTH = MIN_TOKEN_LENGTH
+DEFAULT_TOKEN_DELIMITER_PATTERN = TOKEN_DELIMITER_PATTERN
+DEFAULT_TOP_K_TERMS = TOP_K_TERMS
+
 
 def load_stopwords(stopwords_path: str | Path) -> set[str]:
     """Input: path to the stopword file.

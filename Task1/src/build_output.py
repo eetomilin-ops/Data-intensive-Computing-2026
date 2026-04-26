@@ -3,6 +3,14 @@
 from pathlib import Path
 from typing import Any
 
+from settings import DEFAULT_META_FILENAME, DEFAULT_OUTPUT_FILENAME, DEFAULT_RANKED_DIRNAME, TARGET_PLATFORM
+
+
+DEFAULT_META_PATH = DEFAULT_META_FILENAME
+DEFAULT_RANKED_TERMS_DIR = DEFAULT_RANKED_DIRNAME
+DEFAULT_OUTPUT_PATH = DEFAULT_OUTPUT_FILENAME
+TARGET_RUNTIME = TARGET_PLATFORM
+
 
 def extract_meta_counts(counts_path: str | Path) -> dict[str, Any]:
     """Input: path to count records emitted by the first job.

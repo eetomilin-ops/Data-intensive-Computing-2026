@@ -11,6 +11,7 @@
 
 | Block | Main functions | Purpose | Description | Implemented in |
 | --- | --- | --- | --- | --- |
+| Configuration | `TARGET_PLATFORM`, `TOP_K_TERMS`, `TOKEN_DELIMITER_PATTERN`, `DEFAULT_*` constants | Keep shared runtime values centralized | Define stable paths, tags, limits, and tokenization constants used across jobs and scripts. | `src/settings.py` |
 | Orchestration | `main`, `parse_args`, `resolve_mode`, `run_pipeline`, `package_submission` | Control execution | Select local or Hadoop runner, resolve input and output paths, and execute the pipeline in the correct order. | `src/run_pipeline.sh`, `src/build_output.py` |
 | Input parsing | `safe_parse_review`, `extract_required_fields` | Keep ingest cheap and safe | Read one JSON review per line, skip malformed records, and keep only `reviewText` and `category` for downstream work. | `src/common.py` |
 | Text normalization | `load_stopwords`, `compile_tokenizer`, `tokenize`, `filter_tokens` | Produce canonical terms | Split text with the required delimiters, lowercase, remove stopwords, and drop single-character tokens. | `src/common.py` |
@@ -78,10 +79,13 @@ Task1/
 ├── requirements/
 │   ├── arch.md
 │   ├── Checklist.md
+│   ├── LDBvars.txt
 │   ├── Requiremnts.md
 │   ├── Assignment_1_Instructions.pdf
+│   ├── diagnose_cluster.sh
 │   └── Assets/
 ├── src/
+│   ├── settings.py
 │   ├── common.py
 │   ├── job_count_stats.py
 │   ├── job_score_topk.py
@@ -100,8 +104,11 @@ Task1/
 | --- | --- |
 | `requirements/arch.md` | Architecture planning note and implementation guidance. |
 | `requirements/Checklist.md` | Execution checklist for implementation and submission. |
+| `requirements/LDBvars.txt` | Saved cluster probe output used to confirm the target runtime. |
 | `requirements/Requiremnts.md` | Condensed assignment requirements captured from the PDF. |
+| `requirements/diagnose_cluster.sh` | Shell probe script used to inspect the target cluster environment. |
 | `requirements/Assets/` | Provided local dev data shards, stopwords, and helper script. |
+| `src/settings.py` | Shared constants for target paths, tokenization rules, runner names, counters, and output naming. |
 | `src/common.py` | Shared tokenizer, stopword loader, chi-square function, record tags, and formatting helpers. |
 | `src/job_count_stats.py` | First mrjob job that emits and aggregates `N`, `N_c`, `N_t`, and `N_tc`. |
 | `src/job_score_topk.py` | Second mrjob job that joins counts, computes chi-square, and keeps the top 75 per category. |

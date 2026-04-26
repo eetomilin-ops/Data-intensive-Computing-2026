@@ -2,6 +2,31 @@
 
 from typing import Iterable
 
+from common import (
+    compile_tokenizer,
+    extract_required_fields,
+    filter_tokens,
+    load_stopwords,
+    safe_parse_review,
+    unique_terms_for_document,
+)
+from settings import (
+    COUNTER_TAG_CATEGORY_DOCS,
+    COUNTER_TAG_TERM_CATEGORY_DOCS,
+    COUNTER_TAG_TERM_DOCS,
+    COUNTER_TAG_TOTAL_DOCS,
+    STOPWORDS_PATH,
+)
+
+
+DEFAULT_STOPWORDS_PATH = STOPWORDS_PATH
+COUNT_COUNTER_TAGS = (
+    COUNTER_TAG_TOTAL_DOCS,
+    COUNTER_TAG_CATEGORY_DOCS,
+    COUNTER_TAG_TERM_DOCS,
+    COUNTER_TAG_TERM_CATEGORY_DOCS,
+)
+
 
 class CountStatsJob:
     """Input: raw review lines from local files or HDFS.

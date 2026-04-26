@@ -2,6 +2,13 @@
 
 from typing import Iterable
 
+from common import compute_chi_square, update_top_k
+from settings import DEFAULT_META_FILENAME, TOP_K_TERMS
+
+
+DEFAULT_META_FILENAME = DEFAULT_META_FILENAME
+DEFAULT_TOP_K_TERMS = TOP_K_TERMS
+
 
 class ScoreTopKJob:
     """Input: aggregated count records plus small metadata for total and category counts.
