@@ -1,0 +1,383 @@
+
+=== host ===
+jupyter-e12533692
+e12533692
+/home/e12533692
+Linux jupyter-e12533692 5.14.0-611.26.1.el9_7.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Jan 30 14:13:18 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+Sun Apr 26 10:56:29 UTC 2026
+GNU bash, version 5.2.21(1)-release (x86_64-pc-linux-gnu)
+Copyright (C) 2022 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+
+This is free software; you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+PRETTY_NAME="Ubuntu 24.04.3 LTS"
+NAME="Ubuntu"
+VERSION_ID="24.04"
+VERSION="24.04.3 LTS (Noble Numbat)"
+VERSION_CODENAME=noble
+ID=ubuntu
+ID_LIKE=debian
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+UBUNTU_CODENAME=noble
+LOGO=ubuntu-logo
+
+=== shell limits ===
+real-time non-blocking time  (microseconds, -R) unlimited
+core file size              (blocks, -c) 0
+data seg size               (kbytes, -d) unlimited
+scheduling priority                 (-e) 0
+file size                   (blocks, -f) unlimited
+pending signals                     (-i) 249776
+max locked memory           (kbytes, -l) 8192
+max memory size             (kbytes, -m) unlimited
+open files                          (-n) 4096
+pipe size                (512 bytes, -p) 8
+POSIX message queues         (bytes, -q) 819200
+real-time priority                  (-r) 0
+stack size                  (kbytes, -s) 8192
+cpu time                   (seconds, -t) unlimited
+max user processes                  (-u) unlimited
+virtual memory              (kbytes, -v) unlimited
+file locks                          (-x) unlimited
+
+=== local resources ===
+16
+               total        used        free      shared  buff/cache   available
+Mem:            61Gi        11Gi       2.1Gi       1.7Gi        49Gi        49Gi
+Swap:             0B          0B          0B
+Filesystem                                                                                                                                                         Size  Used Avail Use% Mounted on
+overlay                                                                                                                                                             99G   19G   81G  19% /
+tmpfs                                                                                                                                                               64M     0   64M   0% /dev
+10.0.2.4:6789,10.0.2.2:6789,10.0.2.5:6789,10.0.2.1:6789,10.0.2.3:6789:/volumes/_nogroup/ac8af470-c04b-4fbf-9e9a-f490bacadfcc/21042326-9de4-41e2-a996-6baa06c02708  100G   30G   71G  30% /sw
+10.0.2.4:6789,10.0.2.2:6789,10.0.2.5:6789,10.0.2.1:6789,10.0.2.3:6789:/volumes/_nogroup/3125db05-6475-45d4-9f5a-0540b05a5d3f/e426a833-5b97-4ed2-a1f7-fb489328da5b  100G     0  100G   0% /config
+10.0.2.4:6789,10.0.2.2:6789,10.0.2.5:6789,10.0.2.1:6789,10.0.2.3:6789:/volumes/_nogroup/53b89ff4-17a6-4b35-bb59-ad423e19c425/0f137190-57eb-47c6-b67b-7763b73822f8  3.0T  1.6T  1.4T  55% /home/dataLAB
+10.0.2.4:6789,10.0.2.2:6789,10.0.2.5:6789,10.0.2.1:6789,10.0.2.3:6789:/volumes/_nogroup/02de6924-f99d-49a0-b250-4b9e74b0e2b7/cc27cf7f-114c-4f4e-904d-8ce44a62c286  100G     0  100G   0% /etc/profile.d_bigtop
+/dev/sda4                                                                                                                                                           99G   19G   81G  19% /etc/hosts
+shm                                                                                                                                                                 64M     0   64M   0% /dev/shm
+tmpfs                                                                                                                                                               62G  4.0K   62G   1% /etc/jupyter/jupyter_server_config.py
+tmpfs                                                                                                                                                               31G     0   31G   0% /proc/acpi
+tmpfs                                                                                                                                                               31G     0   31G   0% /proc/scsi
+tmpfs                                                                                                                                                               31G     0   31G   0% /sys/firmware
+quota command not available
+
+=== python ===
+/sw/venv/python312/python/bin/python3
+Python 3.12.3
+/sw/venv/python312/python/bin/python3
+3.12.3 (main, Jan  8 2026, 11:30:50) [GCC 13.3.0]
+Linux-5.14.0-611.26.1.el9_7.x86_64-x86_64-with-glibc2.39
+pip 26.0.1 from /sw/venv/python312/python/lib/python3.12/site-packages/pip (python 3.12)
+Package                   Version
+------------------------- -----------
+aiohappyeyeballs          2.6.1
+aiohttp                   3.13.3
+aiosignal                 1.4.0
+aiosqlite                 0.22.1
+alembic                   1.18.1
+annotated-types           0.7.0
+anyio                     4.12.1
+argon2-cffi               25.1.0
+argon2-cffi-bindings      25.1.0
+arrow                     1.4.0
+asttokens                 3.0.1
+async-lru                 2.0.5
+attrs                     25.4.0
+babel                     2.17.0
+bash_kernel               0.10.0
+beautifulsoup4            4.14.3
+bleach                    6.3.0
+boto3                     1.42.30
+botocore                  1.42.30
+certifi                   2026.1.4
+certipy                   0.2.2
+cffi                      2.0.0
+charset-normalizer        3.4.4
+click                     8.3.1
+comm                      0.2.3
+contourpy                 1.3.3
+cryptography              46.0.3
+cycler                    0.12.1
+debugpy                   1.8.19
+decorator                 5.2.1
+defusedxml                0.7.1
+distro                    1.9.0
+docstring_parser          0.17.0
+entrypoints               0.4
+executing                 2.2.1
+Faker                     40.1.2
+fastjsonschema            2.21.2
+filelock                  3.20.3
+filetype                  1.2.0
+fonttools                 4.61.1
+fqdn                      1.5.1
+frozenlist                1.8.0
+fsspec                    2026.1.0
+gensim                    4.4.0
+geopandas                 1.1.2
+greenlet                  3.3.0
+grpcio                    1.76.0
+h11                       0.16.0
+httpcore                  1.0.9
+httpx                     0.28.1
+idna                      3.11
+ipykernel                 7.1.0
+ipython                   9.9.0
+ipython_pygments_lexers   1.1.1
+ipywidgets                8.1.8
+isoduration               20.11.0
+itables                   2.6.2
+jedi                      0.19.2
+Jinja2                    3.1.6
+jiter                     0.13.0
+jmespath                  1.0.1
+joblib                    1.5.3
+json_repair               0.57.1
+json5                     0.13.0
+jsonpointer               3.0.0
+jsonschema                4.26.0
+jsonschema-specifications 2025.9.1
+jupyter                   1.1.1
+jupyter_client            8.8.0
+jupyter-console           6.6.3
+jupyter_core              5.9.1
+jupyter-events            0.12.0
+jupyter-lsp               2.3.0
+jupyter-resource-usage    1.2.1
+jupyter_server            2.17.0
+jupyter_server_proxy      4.5.0
+jupyter_server_terminals  0.5.4
+jupyterhub                5.4.3
+jupyterhub-yarnspawner    0.4.0
+jupyterlab                4.5.2
+jupyterlab_pygments       0.3.0
+jupyterlab_server         2.28.0
+jupyterlab_widgets        3.0.16
+kiwisolver                1.4.9
+koalas                    0.32.0
+lark                      1.3.1
+Mako                      1.3.10
+MarkupSafe                3.0.3
+matplotlib                3.10.8
+matplotlib-inline         0.2.1
+mistune                   3.2.0
+mpmath                    1.3.0
+mr3px                     0.5.1
+mrjob                     0.7.4
+multidict                 6.7.1
+nbclient                  0.10.4
+nbconvert                 7.16.6
+nbformat                  5.10.4
+nest-asyncio              1.6.0
+networkx                  3.6.1
+nltk                      3.9.2
+notebook                  7.5.2
+notebook_shim             0.2.4
+numpy                     2.4.2
+nvidia-cublas-cu12        12.8.4.1
+nvidia-cuda-cupti-cu12    12.8.90
+nvidia-cuda-nvrtc-cu12    12.8.93
+nvidia-cuda-runtime-cu12  12.8.90
+nvidia-cudnn-cu12         9.10.2.21
+nvidia-cufft-cu12         11.3.3.83
+nvidia-cufile-cu12        1.13.1.3
+nvidia-curand-cu12        10.3.9.90
+nvidia-cusolver-cu12      11.7.3.90
+nvidia-cusparse-cu12      12.5.8.93
+nvidia-cusparselt-cu12    0.7.1
+nvidia-nccl-cu12          2.27.5
+nvidia-nvjitlink-cu12     12.8.93
+nvidia-nvshmem-cu12       3.3.20
+nvidia-nvtx-cu12          12.8.90
+oauthlib                  3.3.1
+openai                    2.20.0
+osmnx                     2.0.7
+packaging                 25.0
+pamela                    1.2.0
+pandas                    3.0.0
+pandocfilters             1.5.1
+papermill                 2.7.0
+parso                     0.8.5
+pexpect                   4.9.0
+pillow                    12.1.1
+pip                       26.0.1
+platformdirs              4.5.1
+prometheus_client         0.24.1
+prompt_toolkit            3.0.52
+propcache                 0.4.1
+protobuf                  6.33.4
+psutil                    7.2.1
+ptyprocess                0.7.0
+pure_eval                 0.2.3
+py4j                      0.10.9.9
+pyarrow                   23.0.0
+pycparser                 2.23
+pydantic                  2.12.5
+pydantic_core             2.41.5
+Pygments                  2.19.2
+pyparsing                 3.3.1
+pyreadline                2.1
+pyspark                   4.1.1
+python-dateutil           2.9.0.post0
+python-json-logger        4.0.0
+pytorch-transformers      1.2.0
+pytz                      2025.2
+PyYAML                    6.0.3
+pyzmq                     27.1.0
+referencing               0.37.0
+regex                     2026.1.15
+requests                  2.32.5
+rfc3339-validator         0.1.4
+rfc3986-validator         0.1.1
+rfc3987-syntax            1.1.0
+rpds-py                   0.30.0
+s3transfer                0.16.0
+sacremoses                0.1.1
+scipy                     1.17.0
+Send2Trash                2.1.0
+setuptools                80.9.0
+simpervisor               1.0.0
+six                       1.17.0
+skein                     0.8.2
+smart_open                7.5.1
+sniffio                   1.3.1
+soupsieve                 2.8.1
+Spark                     0.3.2
+SQLAlchemy                2.0.46
+stack-data                0.6.3
+starlette                 0.52.1
+sympy                     1.14.0
+tenacity                  9.1.4
+terminado                 0.18.1
+tinycss2                  1.4.0
+tornado                   6.5.4
+tqdm                      4.67.1
+traitlets                 5.14.3
+typing_extensions         4.15.0
+typing-inspection         0.4.2
+tzdata                    2025.3
+uri-template              1.3.0
+urllib3                   2.6.3
+uvicorn                   0.40.0
+wcwidth                   0.2.14
+webcolors                 25.10.0
+webencodings              0.5.1
+websocket-client          1.9.0
+websockets                16.0
+widgetsnbextension        4.0.15
+wrapt                     2.1.2
+yarl                      1.22.0
+0.7.4
+/sw/venv/python312/python/bin/python
+Python 3.12.3
+
+=== java ===
+/usr/bin/java
+JAVA_HOME=
+
+=== hadoop ===
+/usr/bin/hadoop
+Hadoop 3.3.6
+Source code repository https://github.com/apache/bigtop.git -r 79fb2857c7c52d680cbaba0e5cb1e9a0f0d33132
+Compiled by jenkins on 2025-08-14T13:06Z
+Compiled on platform linux-x86_64
+Compiled with protoc 3.7.1
+From source with checksum 5652179ad55f76cb287d9c633bb53bbd
+This command was run using /usr/lib/hadoop/hadoop-common-3.3.6.jar
+/etc/hadoop/conf:/usr/lib/hadoop/lib/animal-sniffer-annotations-1.17.jar:/usr/lib/hadoop/lib/audience-annotations-0.12.0.jar:/usr/lib/hadoop/lib/avro-1.7.7.jar:/usr/lib/hadoop/lib/checker-qual-2.5.2.jar:/usr/lib/hadoop/lib/commons-beanutils-1.9.4.jar:/usr/lib/hadoop/lib/commons-cli-1.2.jar:/usr/lib/hadoop/lib/commons-codec-1.15.jar:/usr/lib/hadoop/lib/commons-collections-3.2.2.jar:/usr/lib/hadoop/lib/commons-compress-1.21.jar:/usr/lib/hadoop/lib/commons-configuration2-2.8.0.jar:/usr/lib/hadoop/lib/commons-daemon-1.0.13.jar:/usr/lib/hadoop/lib/commons-io-2.8.0.jar:/usr/lib/hadoop/lib/commons-lang3-3.12.0.jar:/usr/lib/hadoop/lib/commons-logging-1.1.3.jar:/usr/lib/hadoop/lib/commons-math3-3.1.1.jar:/usr/lib/hadoop/lib/commons-net-3.9.0.jar:/usr/lib/hadoop/lib/commons-text-1.10.0.jar:/usr/lib/hadoop/lib/curator-client-5.2.0.jar:/usr/lib/hadoop/lib/curator-framework-5.2.0.jar:/usr/lib/hadoop/lib/curator-recipes-5.2.0.jar:/usr/lib/hadoop/lib/dnsjava-2.1.7.jar:/usr/lib/hadoop/lib/failureaccess-1.0.jar:/usr/lib/hadoop/lib/gson-2.9.0.jar:/usr/lib/hadoop/lib/guava-27.0-jre.jar:/usr/lib/hadoop/lib/hadoop-annotations-3.3.6.jar:/usr/lib/hadoop/lib/hadoop-auth-3.3.6.jar:/usr/lib/hadoop/lib/hadoop-shaded-guava-1.1.1.jar:/usr/lib/hadoop/lib/hadoop-shaded-protobuf_3_7-1.1.1.jar:/usr/lib/hadoop/lib/httpclient-4.5.13.jar:/usr/lib/hadoop/lib/httpcore-4.4.13.jar:/usr/lib/hadoop/lib/j2objc-annotations-1.1.jar:/usr/lib/hadoop/lib/jackson-annotations-2.12.7.jar:/usr/lib/hadoop/lib/jackson-core-2.12.7.jar:/usr/lib/hadoop/lib/jackson-core-asl-1.9.13.jar:/usr/lib/hadoop/lib/jackson-databind-2.12.7.1.jar:/usr/lib/hadoop/lib/jackson-mapper-asl-1.9.13.jar:/usr/lib/hadoop/lib/jakarta.activation-api-1.2.1.jar:/usr/lib/hadoop/lib/javax.servlet-api-3.1.0.jar:/usr/lib/hadoop/lib/jaxb-api-2.2.11.jar:/usr/lib/hadoop/lib/jaxb-impl-2.2.3-1.jar:/usr/lib/hadoop/lib/jcip-annotations-1.0-1.jar:/usr/lib/hadoop/lib/jersey-core-1.19.4.jar:/usr/lib/hadoop/lib/jersey-json-1.20.jar:/usr/lib/hadoop/lib/jersey-server-1.19.4.jar:/usr/lib/hadoop/lib/jersey-servlet-1.19.4.jar:/usr/lib/hadoop/lib/jettison-1.5.4.jar:/usr/lib/hadoop/lib/jetty-http-9.4.51.v20230217.jar:/usr/lib/hadoop/lib/jetty-io-9.4.51.v20230217.jar:/usr/lib/hadoop/lib/jetty-security-9.4.51.v20230217.jar:/usr/lib/hadoop/lib/jetty-server-9.4.51.v20230217.jar:/usr/lib/hadoop/lib/jetty-servlet-9.4.51.v20230217.jar:/usr/lib/hadoop/lib/jetty-util-9.4.51.v20230217.jar:/usr/lib/hadoop/lib/jetty-util-ajax-9.4.51.v20230217.jar:/usr/lib/hadoop/lib/jetty-webapp-9.4.51.v20230217.jar:/usr/lib/hadoop/lib/jetty-xml-9.4.51.v20230217.jar:/usr/lib/hadoop/lib/jsch-0.1.55.jar:/usr/lib/hadoop/lib/jsp-api-2.1.jar:/usr/lib/hadoop/lib/jsr305-3.0.2.jar:/usr/lib/hadoop/lib/jsr311-api-1.1.1.jar:/usr/lib/hadoop/lib/jul-to-slf4j-1.7.36.jar:/usr/lib/hadoop/lib/kerb-admin-1.0.1.jar:/usr/lib/hadoop/lib/kerb-client-1.0.1.jar:/usr/lib/hadoop/lib/kerb-common-1.0.1.jar:/usr/lib/hadoop/lib/kerb-core-1.0.1.jar:/usr/lib/hadoop/lib/kerb-crypto-1.0.1.jar:/usr/lib/hadoop/lib/kerb-identity-1.0.1.jar:/usr/lib/hadoop/lib/kerb-server-1.0.1.jar:/usr/lib/hadoop/lib/kerb-simplekdc-1.0.1.jar:/usr/lib/hadoop/lib/kerb-util-1.0.1.jar:/usr/lib/hadoop/lib/kerby-asn1-1.0.1.jar:/usr/lib/hadoop/lib/kerby-config-1.0.1.jar:/usr/lib/hadoop/lib/kerby-pkix-1.0.1.jar:/usr/lib/hadoop/lib/kerby-util-1.0.1.jar:/usr/lib/hadoop/lib/kerby-xdr-1.0.1.jar:/usr/lib/hadoop/lib/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar:/usr/lib/hadoop/lib/metrics-core-3.2.4.jar:/usr/lib/hadoop/lib/netty-all-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-buffer-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-codec-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-codec-dns-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-codec-haproxy-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-codec-http-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-codec-http2-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-codec-memcache-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-codec-mqtt-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-codec-redis-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-codec-smtp-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-codec-socks-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-codec-stomp-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-codec-xml-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-common-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-handler-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-handler-proxy-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-handler-ssl-ocsp-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-resolver-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-resolver-dns-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-resolver-dns-classes-macos-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-resolver-dns-native-macos-4.1.89.Final-osx-aarch_64.jar:/usr/lib/hadoop/lib/netty-resolver-dns-native-macos-4.1.89.Final-osx-x86_64.jar:/usr/lib/hadoop/lib/netty-transport-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-transport-classes-epoll-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-transport-classes-kqueue-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-transport-native-epoll-4.1.89.Final-linux-aarch_64.jar:/usr/lib/hadoop/lib/netty-transport-native-epoll-4.1.89.Final-linux-x86_64.jar:/usr/lib/hadoop/lib/netty-transport-native-kqueue-4.1.89.Final-osx-aarch_64.jar:/usr/lib/hadoop/lib/netty-transport-native-kqueue-4.1.89.Final-osx-x86_64.jar:/usr/lib/hadoop/lib/netty-transport-native-unix-common-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-transport-rxtx-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-transport-sctp-4.1.89.Final.jar:/usr/lib/hadoop/lib/netty-transport-udt-4.1.89.Final.jar:/usr/lib/hadoop/lib/nimbus-jose-jwt-9.8.1.jar:/usr/lib/hadoop/lib/paranamer-2.3.jar:/usr/lib/hadoop/lib/protobuf-java-2.5.0.jar:/usr/lib/hadoop/lib/re2j-1.1.jar:/usr/lib/hadoop/lib/reload4j-1.2.22.jar:/usr/lib/hadoop/lib/slf4j-api-1.7.36.jar:/usr/lib/hadoop/lib/slf4j-reload4j-1.7.36.jar:/usr/lib/hadoop/lib/snappy-java-1.1.8.2.jar:/usr/lib/hadoop/lib/stax2-api-4.2.1.jar:/usr/lib/hadoop/lib/token-provider-1.0.1.jar:/usr/lib/hadoop/lib/woodstox-core-5.4.0.jar:/usr/lib/hadoop/lib/zookeeper-3.8.4.jar:/usr/lib/hadoop/lib/zookeeper-jute-3.8.4.jar:/usr/lib/hadoop/.//hadoop-annotations-3.3.6.jar:/usr/lib/hadoop/.//hadoop-annotations.jar:/usr/lib/hadoop/.//hadoop-auth-3.3.6.jar:/usr/lib/hadoop/.//hadoop-auth.jar:/usr/lib/hadoop/.//hadoop-common-3.3.6-tests.jar:/usr/lib/hadoop/.//hadoop-common-3.3.6.jar:/usr/lib/hadoop/.//hadoop-common.jar:/usr/lib/hadoop/.//hadoop-kms-3.3.6.jar:/usr/lib/hadoop/.//hadoop-kms.jar:/usr/lib/hadoop/.//hadoop-nfs-3.3.6.jar:/usr/lib/hadoop/.//hadoop-nfs.jar:/usr/lib/hadoop/.//hadoop-registry-3.3.6.jar:/usr/lib/hadoop/.//hadoop-registry.jar:/usr/lib/hadoop-hdfs/./:/usr/lib/hadoop-hdfs/lib/HikariCP-java7-2.4.12.jar:/usr/lib/hadoop-hdfs/lib/animal-sniffer-annotations-1.17.jar:/usr/lib/hadoop-hdfs/lib/audience-annotations-0.12.0.jar:/usr/lib/hadoop-hdfs/lib/avro-1.7.7.jar:/usr/lib/hadoop-hdfs/lib/checker-qual-2.5.2.jar:/usr/lib/hadoop-hdfs/lib/commons-beanutils-1.9.4.jar:/usr/lib/hadoop-hdfs/lib/commons-cli-1.2.jar:/usr/lib/hadoop-hdfs/lib/commons-codec-1.15.jar:/usr/lib/hadoop-hdfs/lib/commons-collections-3.2.2.jar:/usr/lib/hadoop-hdfs/lib/commons-compress-1.21.jar:/usr/lib/hadoop-hdfs/lib/commons-configuration2-2.8.0.jar:/usr/lib/hadoop-hdfs/lib/commons-daemon-1.0.13.jar:/usr/lib/hadoop-hdfs/lib/commons-io-2.8.0.jar:/usr/lib/hadoop-hdfs/lib/commons-lang3-3.12.0.jar:/usr/lib/hadoop-hdfs/lib/commons-logging-1.1.3.jar:/usr/lib/hadoop-hdfs/lib/commons-math3-3.1.1.jar:/usr/lib/hadoop-hdfs/lib/commons-net-3.9.0.jar:/usr/lib/hadoop-hdfs/lib/commons-text-1.10.0.jar:/usr/lib/hadoop-hdfs/lib/curator-client-5.2.0.jar:/usr/lib/hadoop-hdfs/lib/curator-framework-5.2.0.jar:/usr/lib/hadoop-hdfs/lib/curator-recipes-5.2.0.jar:/usr/lib/hadoop-hdfs/lib/dnsjava-2.1.7.jar:/usr/lib/hadoop-hdfs/lib/failureaccess-1.0.jar:/usr/lib/hadoop-hdfs/lib/gson-2.9.0.jar:/usr/lib/hadoop-hdfs/lib/guava-27.0-jre.jar:/usr/lib/hadoop-hdfs/lib/hadoop-annotations-3.3.6.jar:/usr/lib/hadoop-hdfs/lib/hadoop-auth-3.3.6.jar:/usr/lib/hadoop-hdfs/lib/hadoop-shaded-guava-1.1.1.jar:/usr/lib/hadoop-hdfs/lib/hadoop-shaded-protobuf_3_7-1.1.1.jar:/usr/lib/hadoop-hdfs/lib/httpclient-4.5.13.jar:/usr/lib/hadoop-hdfs/lib/httpcore-4.4.13.jar:/usr/lib/hadoop-hdfs/lib/j2objc-annotations-1.1.jar:/usr/lib/hadoop-hdfs/lib/jackson-annotations-2.12.7.jar:/usr/lib/hadoop-hdfs/lib/jackson-core-2.12.7.jar:/usr/lib/hadoop-hdfs/lib/jackson-core-asl-1.9.13.jar:/usr/lib/hadoop-hdfs/lib/jackson-databind-2.12.7.1.jar:/usr/lib/hadoop-hdfs/lib/jackson-mapper-asl-1.9.13.jar:/usr/lib/hadoop-hdfs/lib/jakarta.activation-api-1.2.1.jar:/usr/lib/hadoop-hdfs/lib/javax.servlet-api-3.1.0.jar:/usr/lib/hadoop-hdfs/lib/jaxb-api-2.2.11.jar:/usr/lib/hadoop-hdfs/lib/jaxb-impl-2.2.3-1.jar:/usr/lib/hadoop-hdfs/lib/jcip-annotations-1.0-1.jar:/usr/lib/hadoop-hdfs/lib/jersey-core-1.19.4.jar:/usr/lib/hadoop-hdfs/lib/jersey-json-1.20.jar:/usr/lib/hadoop-hdfs/lib/jersey-server-1.19.4.jar:/usr/lib/hadoop-hdfs/lib/jersey-servlet-1.19.4.jar:/usr/lib/hadoop-hdfs/lib/jettison-1.5.4.jar:/usr/lib/hadoop-hdfs/lib/jetty-http-9.4.51.v20230217.jar:/usr/lib/hadoop-hdfs/lib/jetty-io-9.4.51.v20230217.jar:/usr/lib/hadoop-hdfs/lib/jetty-security-9.4.51.v20230217.jar:/usr/lib/hadoop-hdfs/lib/jetty-server-9.4.51.v20230217.jar:/usr/lib/hadoop-hdfs/lib/jetty-servlet-9.4.51.v20230217.jar:/usr/lib/hadoop-hdfs/lib/jetty-util-9.4.51.v20230217.jar:/usr/lib/hadoop-hdfs/lib/jetty-util-ajax-9.4.51.v20230217.jar:/usr/lib/hadoop-hdfs/lib/jetty-webapp-9.4.51.v20230217.jar:/usr/lib/hadoop-hdfs/lib/jetty-xml-9.4.51.v20230217.jar:/usr/lib/hadoop-hdfs/lib/jsch-0.1.55.jar:/usr/lib/hadoop-hdfs/lib/json-simple-1.1.1.jar:/usr/lib/hadoop-hdfs/lib/jsr305-3.0.2.jar:/usr/lib/hadoop-hdfs/lib/jsr311-api-1.1.1.jar:/usr/lib/hadoop-hdfs/lib/kerb-admin-1.0.1.jar:/usr/lib/hadoop-hdfs/lib/kerb-client-1.0.1.jar:/usr/lib/hadoop-hdfs/lib/kerb-common-1.0.1.jar:/usr/lib/hadoop-hdfs/lib/kerb-core-1.0.1.jar:/usr/lib/hadoop-hdfs/lib/kerb-crypto-1.0.1.jar:/usr/lib/hadoop-hdfs/lib/kerb-identity-1.0.1.jar:/usr/lib/hadoop-hdfs/lib/kerb-server-1.0.1.jar:/usr/lib/hadoop-hdfs/lib/kerb-simplekdc-1.0.1.jar:/usr/lib/hadoop-hdfs/lib/kerb-util-1.0.1.jar:/usr/lib/hadoop-hdfs/lib/kerby-asn1-1.0.1.jar:/usr/lib/hadoop-hdfs/lib/kerby-config-1.0.1.jar:/usr/lib/hadoop-hdfs/lib/kerby-pkix-1.0.1.jar:/usr/lib/hadoop-hdfs/lib/kerby-util-1.0.1.jar:/usr/lib/hadoop-hdfs/lib/kerby-xdr-1.0.1.jar:/usr/lib/hadoop-hdfs/lib/kotlin-stdlib-1.4.10.jar:/usr/lib/hadoop-hdfs/lib/kotlin-stdlib-common-1.4.10.jar:/usr/lib/hadoop-hdfs/lib/leveldbjni-all-1.8.jar:/usr/lib/hadoop-hdfs/lib/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar:/usr/lib/hadoop-hdfs/lib/metrics-core-3.2.4.jar:/usr/lib/hadoop-hdfs/lib/netty-3.10.6.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-all-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-buffer-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-codec-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-codec-dns-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-codec-haproxy-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-codec-http-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-codec-http2-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-codec-memcache-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-codec-mqtt-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-codec-redis-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-codec-smtp-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-codec-socks-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-codec-stomp-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-codec-xml-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-common-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-handler-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-handler-proxy-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-handler-ssl-ocsp-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-resolver-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-resolver-dns-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-resolver-dns-classes-macos-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-resolver-dns-native-macos-4.1.89.Final-osx-aarch_64.jar:/usr/lib/hadoop-hdfs/lib/netty-resolver-dns-native-macos-4.1.89.Final-osx-x86_64.jar:/usr/lib/hadoop-hdfs/lib/netty-transport-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-transport-classes-epoll-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-transport-classes-kqueue-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-transport-native-epoll-4.1.89.Final-linux-aarch_64.jar:/usr/lib/hadoop-hdfs/lib/netty-transport-native-epoll-4.1.89.Final-linux-x86_64.jar:/usr/lib/hadoop-hdfs/lib/netty-transport-native-kqueue-4.1.89.Final-osx-aarch_64.jar:/usr/lib/hadoop-hdfs/lib/netty-transport-native-kqueue-4.1.89.Final-osx-x86_64.jar:/usr/lib/hadoop-hdfs/lib/netty-transport-native-unix-common-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-transport-rxtx-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-transport-sctp-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/netty-transport-udt-4.1.89.Final.jar:/usr/lib/hadoop-hdfs/lib/nimbus-jose-jwt-9.8.1.jar:/usr/lib/hadoop-hdfs/lib/okhttp-4.9.3.jar:/usr/lib/hadoop-hdfs/lib/okio-2.8.0.jar:/usr/lib/hadoop-hdfs/lib/paranamer-2.3.jar:/usr/lib/hadoop-hdfs/lib/protobuf-java-2.5.0.jar:/usr/lib/hadoop-hdfs/lib/re2j-1.1.jar:/usr/lib/hadoop-hdfs/lib/reload4j-1.2.22.jar:/usr/lib/hadoop-hdfs/lib/snappy-java-1.1.8.2.jar:/usr/lib/hadoop-hdfs/lib/stax2-api-4.2.1.jar:/usr/lib/hadoop-hdfs/lib/token-provider-1.0.1.jar:/usr/lib/hadoop-hdfs/lib/woodstox-core-5.4.0.jar:/usr/lib/hadoop-hdfs/lib/zookeeper-3.8.4.jar:/usr/lib/hadoop-hdfs/lib/zookeeper-jute-3.8.4.jar:/usr/lib/hadoop-hdfs/.//hadoop-hdfs-3.3.6-tests.jar:/usr/lib/hadoop-hdfs/.//hadoop-hdfs-3.3.6.jar:/usr/lib/hadoop-hdfs/.//hadoop-hdfs-client-3.3.6-tests.jar:/usr/lib/hadoop-hdfs/.//hadoop-hdfs-client-3.3.6.jar:/usr/lib/hadoop-hdfs/.//hadoop-hdfs-client.jar:/usr/lib/hadoop-hdfs/.//hadoop-hdfs-httpfs-3.3.6.jar:/usr/lib/hadoop-hdfs/.//hadoop-hdfs-httpfs.jar:/usr/lib/hadoop-hdfs/.//hadoop-hdfs-native-client-3.3.6-tests.jar:/usr/lib/hadoop-hdfs/.//hadoop-hdfs-native-client-3.3.6.jar:/usr/lib/hadoop-hdfs/.//hadoop-hdfs-native-client.jar:/usr/lib/hadoop-hdfs/.//hadoop-hdfs-nfs-3.3.6.jar:/usr/lib/hadoop-hdfs/.//hadoop-hdfs-nfs.jar:/usr/lib/hadoop-hdfs/.//hadoop-hdfs-rbf-3.3.6-tests.jar:/usr/lib/hadoop-hdfs/.//hadoop-hdfs-rbf-3.3.6.jar:/usr/lib/hadoop-hdfs/.//hadoop-hdfs-rbf.jar:/usr/lib/hadoop-hdfs/.//hadoop-hdfs.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-client-app-3.3.6.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-client-app.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-client-common-3.3.6.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-client-common.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-client-core-3.3.6.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-client-core.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-client-hs-3.3.6.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-client-hs-plugins-3.3.6.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-client-hs-plugins.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-client-hs.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-client-jobclient-3.3.6-tests.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-client-jobclient-3.3.6.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-client-jobclient.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-client-nativetask-3.3.6.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-client-nativetask.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-client-shuffle-3.3.6.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-client-shuffle.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-client-uploader-3.3.6.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-client-uploader.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-examples-3.3.6.jar:/usr/lib/hadoop-mapreduce/.//hadoop-mapreduce-examples.jar:/usr/lib/hadoop-yarn/./:/usr/lib/hadoop-yarn/lib/aopalliance-1.0.jar:/usr/lib/hadoop-yarn/lib/asm-commons-9.4.jar:/usr/lib/hadoop-yarn/lib/asm-tree-9.4.jar:/usr/lib/hadoop-yarn/lib/bcpkix-jdk15on-1.68.jar:/usr/lib/hadoop-yarn/lib/bcprov-jdk15on-1.68.jar:/usr/lib/hadoop-yarn/lib/ehcache-3.3.1.jar:/usr/lib/hadoop-yarn/lib/fst-2.50.jar:/usr/lib/hadoop-yarn/lib/geronimo-jcache_1.0_spec-1.0-alpha-1.jar:/usr/lib/hadoop-yarn/lib/guice-4.0.jar:/usr/lib/hadoop-yarn/lib/guice-servlet-4.0.jar:/usr/lib/hadoop-yarn/lib/jackson-jaxrs-base-2.12.7.jar:/usr/lib/hadoop-yarn/lib/jackson-jaxrs-json-provider-2.12.7.jar:/usr/lib/hadoop-yarn/lib/jackson-module-jaxb-annotations-2.12.7.jar:/usr/lib/hadoop-yarn/lib/jakarta.xml.bind-api-2.3.2.jar:/usr/lib/hadoop-yarn/lib/java-util-1.9.0.jar:/usr/lib/hadoop-yarn/lib/javax-websocket-client-impl-9.4.51.v20230217.jar:/usr/lib/hadoop-yarn/lib/javax-websocket-server-impl-9.4.51.v20230217.jar:/usr/lib/hadoop-yarn/lib/javax.inject-1.jar:/usr/lib/hadoop-yarn/lib/javax.websocket-api-1.0.jar:/usr/lib/hadoop-yarn/lib/javax.websocket-client-api-1.0.jar:/usr/lib/hadoop-yarn/lib/jersey-client-1.19.4.jar:/usr/lib/hadoop-yarn/lib/jersey-guice-1.19.4.jar:/usr/lib/hadoop-yarn/lib/jetty-annotations-9.4.51.v20230217.jar:/usr/lib/hadoop-yarn/lib/jetty-client-9.4.51.v20230217.jar:/usr/lib/hadoop-yarn/lib/jetty-jndi-9.4.51.v20230217.jar:/usr/lib/hadoop-yarn/lib/jetty-plus-9.4.51.v20230217.jar:/usr/lib/hadoop-yarn/lib/jline-3.9.0.jar:/usr/lib/hadoop-yarn/lib/jna-5.2.0.jar:/usr/lib/hadoop-yarn/lib/json-io-2.5.1.jar:/usr/lib/hadoop-yarn/lib/mssql-jdbc-6.2.1.jre7.jar:/usr/lib/hadoop-yarn/lib/objenesis-2.6.jar:/usr/lib/hadoop-yarn/lib/snakeyaml-2.0.jar:/usr/lib/hadoop-yarn/lib/swagger-annotations-1.5.4.jar:/usr/lib/hadoop-yarn/lib/websocket-api-9.4.51.v20230217.jar:/usr/lib/hadoop-yarn/lib/websocket-client-9.4.51.v20230217.jar:/usr/lib/hadoop-yarn/lib/websocket-common-9.4.51.v20230217.jar:/usr/lib/hadoop-yarn/lib/websocket-server-9.4.51.v20230217.jar:/usr/lib/hadoop-yarn/lib/websocket-servlet-9.4.51.v20230217.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-api-3.3.6.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-api.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-applications-distributedshell-3.3.6.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-applications-distributedshell.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-applications-mawo-core-3.3.6.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-applications-mawo-core.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-applications-unmanaged-am-launcher-3.3.6.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-applications-unmanaged-am-launcher.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-client-3.3.6.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-client.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-common-3.3.6.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-common.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-registry-3.3.6.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-registry.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-server-applicationhistoryservice-3.3.6.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-server-applicationhistoryservice.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-server-common-3.3.6.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-server-common.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-server-nodemanager-3.3.6.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-server-nodemanager.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-server-resourcemanager-3.3.6.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-server-resourcemanager.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-server-router-3.3.6.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-server-router.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-server-sharedcachemanager-3.3.6.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-server-sharedcachemanager.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-server-tests-3.3.6.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-server-tests.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-server-timeline-pluginstorage-3.3.6.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-server-timeline-pluginstorage.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-server-web-proxy-3.3.6.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-server-web-proxy.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-services-api-3.3.6.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-services-api.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-services-core-3.3.6.jar:/usr/lib/hadoop-yarn/.//hadoop-yarn-services-core.jar
+
+=== hdfs ===
+/usr/bin/hdfs
+Hadoop 3.3.6
+Source code repository https://github.com/apache/bigtop.git -r 79fb2857c7c52d680cbaba0e5cb1e9a0f0d33132
+Compiled by jenkins on 2025-08-14T13:06Z
+Compiled on platform linux-x86_64
+Compiled with protoc 3.7.1
+From source with checksum 5652179ad55f76cb287d9c633bb53bbd
+This command was run using /usr/lib/hadoop/hadoop-common-3.3.6.jar
+hdfs://lbddatalab
+134217728
+3
+Found 7 items
+drwxr-xr-x   - koumudi supergroup          0 2025-04-04 14:09 /adbs_shared
+drwxr-xr-x   - hdfs    supergroup          0 2025-04-04 12:38 /data
+drwxr-xr-x   - daniel  supergroup          0 2026-03-25 11:02 /dic_shared
+drwxr-xr-x   - hdfs    supergroup          0 2026-01-15 09:22 /system
+drwxrwxrwt   - hdfs    supergroup          0 2026-04-22 21:13 /tmp
+drwxr-xr-x   - hdfs    supergroup          0 2026-03-31 11:14 /user
+drwxr-xr-x   - yarn    supergroup          0 2024-12-10 09:04 /yarn
+Found 1 items
+drwxr-xr-x   - daniel supergroup          0 2026-03-25 11:02 /dic_shared/amazon-reviews
+Found 2 items
+-rw-r--r--   3 daniel supergroup    57980510 2026-03-25 11:02 /dic_shared/amazon-reviews/full/reviews_devset.json
+-rw-r--r--   3 daniel supergroup 58276033226 2026-03-25 11:08 /dic_shared/amazon-reviews/full/reviewscombined.json
+54.3 G  162.8 G  /dic_shared/amazon-reviews/full/reviewscombined.json
+55.3 M  165.9 M  /dic_shared/amazon-reviews/full/reviews_devset.json
+
+=== yarn ===
+/usr/bin/yarn
+Hadoop 3.3.6
+Source code repository https://github.com/apache/bigtop.git -r 79fb2857c7c52d680cbaba0e5cb1e9a0f0d33132
+Compiled by jenkins on 2025-08-14T13:06Z
+Compiled on platform linux-x86_64
+Compiled with protoc 3.7.1
+From source with checksum 5652179ad55f76cb287d9c633bb53bbd
+This command was run using /usr/lib/hadoop/hadoop-common-3.3.6.jar
+Total Nodes:23
+         Node-Id	     Node-State	Node-Http-Address	Number-of-Running-Containers
+lbdsv02.datalab.novalocal:40919	        RUNNING	lbdsv02.datalab.novalocal:8042	                           2
+lbdwo17.datalab.novalocal:37599	        RUNNING	lbdwo17.datalab.novalocal:8042	                           0
+lbdwo06.datalab.novalocal:45123	        RUNNING	lbdwo06.datalab.novalocal:8042	                           1
+lbdwo23.datalab.novalocal:43591	        RUNNING	lbdwo23.datalab.novalocal:8042	                           1
+lbdwo18.datalab.novalocal:46831	        RUNNING	lbdwo18.datalab.novalocal:8042	                           1
+lbdwo24.datalab.novalocal:33661	        RUNNING	lbdwo24.datalab.novalocal:8042	                           2
+lbdsv03.datalab.novalocal:36139	        RUNNING	lbdsv03.datalab.novalocal:8042	                           1
+lbdwo19.datalab.novalocal:39997	        RUNNING	lbdwo19.datalab.novalocal:8042	                           1
+lbdwo20.datalab.novalocal:41521	        RUNNING	lbdwo20.datalab.novalocal:8042	                           1
+lbdwo08.datalab.novalocal:35913	        RUNNING	lbdwo08.datalab.novalocal:8042	                           0
+lbdwo02.datalab.novalocal:36497	        RUNNING	lbdwo02.datalab.novalocal:8042	                           1
+lbdwo16.datalab.novalocal:41555	        RUNNING	lbdwo16.datalab.novalocal:8042	                           1
+lbdsv01.datalab.novalocal:40119	        RUNNING	lbdsv01.datalab.novalocal:8042	                           3
+lbdwo21.datalab.novalocal:41217	        RUNNING	lbdwo21.datalab.novalocal:8042	                           1
+lbdwo15.datalab.novalocal:43541	        RUNNING	lbdwo15.datalab.novalocal:8042	                           1
+lbdwo04.datalab.novalocal:34563	        RUNNING	lbdwo04.datalab.novalocal:8042	                           1
+lbdwo09.datalab.novalocal:44971	        RUNNING	lbdwo09.datalab.novalocal:8042	                           1
+lbdwo07.datalab.novalocal:39327	        RUNNING	lbdwo07.datalab.novalocal:8042	                           1
+lbdwo01.datalab.novalocal:39045	        RUNNING	lbdwo01.datalab.novalocal:8042	                           1
+lbdwo12.datalab.novalocal:46069	        RUNNING	lbdwo12.datalab.novalocal:8042	                           1
+lbdwo13.datalab.novalocal:39477	        RUNNING	lbdwo13.datalab.novalocal:8042	                           1
+lbdwo03.datalab.novalocal:45581	        RUNNING	lbdwo03.datalab.novalocal:8042	                           0
+lbdwo11.datalab.novalocal:35629	        RUNNING	lbdwo11.datalab.novalocal:8042	                           3
+Total number of applications (application-types: [], states: [SUBMITTED, ACCEPTED, RUNNING] and tags: []):3
+                Application-Id	    Application-Name	    Application-Type	      User	     Queue	             State	       Final-State	       Progress	                       Tracking-URL
+application_1777118611239_0328	streamjob6462260187299847797.jar	           MAPREDUCE	 e12412779	   default	           RUNNING	         UNDEFINED	          58.5%	http://lbdwo11.datalab.novalocal:45183
+application_1777118611239_0257	streamjob14221720995824528322.jar	           MAPREDUCE	 e12504678	   default	           RUNNING	         UNDEFINED	         85.22%	http://lbdwo16.datalab.novalocal:42275
+application_1777118611239_0258	streamjob18210141924702724412.jar	           MAPREDUCE	 e12504678	   default	           RUNNING	         UNDEFINED	            65%	http://lbdsv01.datalab.novalocal:40961
+not available or command failed: yarn queue -list
+Queue Information : 
+Queue Name : default
+	State : RUNNING
+	Capacity : 100.00%
+	Current Capacity : 3.85%
+	Maximum Capacity : 100.00%
+	Default Node Label expression : <DEFAULT_PARTITION>
+	Accessible Node Labels : *
+	Preemption : disabled
+	Intra-queue Preemption : disabled
+
+=== mapreduce defaults ===
+-1
+1024
+8192
+-1
+-1
+not available or command failed: hdfs getconf -confKey mapreduce.map.java.opts
+not available or command failed: hdfs getconf -confKey mapreduce.reduce.java.opts
+1
+
+=== environment ===
+LD_LIBRARY_PATH=
+PATH=/home/e12533692/.local/bin:/home/e12533692/bin:/sw/venv/python312/python/bin/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
