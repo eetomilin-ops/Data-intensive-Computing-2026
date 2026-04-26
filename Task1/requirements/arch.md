@@ -9,17 +9,17 @@
 
 ## 1. Function Blocks
 
-| Block | Main functions | Purpose | Description |
-| --- | --- | --- | --- |
-| Orchestration | `main`, `parse_args`, `resolve_mode`, `run_pipeline` | Control execution | Select local or Hadoop runner, resolve input and output paths, and execute the pipeline in the correct order. |
-| Input parsing | `safe_parse_review`, `extract_required_fields` | Keep ingest cheap and safe | Read one JSON review per line, skip malformed records, and keep only `reviewText` and `category` for downstream work. |
-| Text normalization | `compile_tokenizer`, `tokenize`, `filter_tokens` | Produce canonical terms | Split text with the required delimiters, lowercase, remove stopwords, and drop single-character tokens. |
-| Document feature builder | `unique_terms_for_document` | Enforce chi-square semantics | Convert tokens to a document-level unique term set so a term contributes at most once per review. |
-| Count statistics job | `CountStatsJob.mapper_init`, `mapper`, `combiner`, `reducer` | Aggregate all counts in one raw-data scan | Emit tagged counts for total documents `N`, category documents `N_c`, term documents `N_t`, and term-category documents `N_tc`. |
-| Metadata extraction | `extract_meta_counts`, `write_meta_json` | Build small broadcast state | Extract `N` and all `N_c` values from the first job output into a compact JSON blob passed to the scoring job. |
-| Score and top-k job | `ScoreTopKJob.mapper`, `reducer_init`, `reducer`, `reducer_final` | Compute chi-square and keep only top results | Join `N_t` with `N_tc`, compute chi-square per category, and maintain a bounded heap of top 75 terms per category. |
-| Output builder | `read_ranked_terms`, `format_category_line`, `merge_dictionary`, `write_output` | Produce final deliverable text | Sort categories alphabetically, serialize the top 75 terms per category, and emit the merged dictionary line. |
-| Local debug harness | `run_local_debug`, `run_smoke_case` | Shorten iteration time | Run the same pipeline on the split dev files locally before any HDFS execution. |
+| Block | Main functions | Purpose | Description | Implemented in |
+| --- | --- | --- | --- | --- |
+| Orchestration | `main`, `parse_args`, `resolve_mode`, `run_pipeline`, `package_submission` | Control execution | Select local or Hadoop runner, resolve input and output paths, and execute the pipeline in the correct order. | `src/run_pipeline.sh`, `src/build_output.py` |
+| Input parsing | `safe_parse_review`, `extract_required_fields` | Keep ingest cheap and safe | Read one JSON review per line, skip malformed records, and keep only `reviewText` and `category` for downstream work. | `src/common.py` |
+| Text normalization | `load_stopwords`, `compile_tokenizer`, `tokenize`, `filter_tokens` | Produce canonical terms | Split text with the required delimiters, lowercase, remove stopwords, and drop single-character tokens. | `src/common.py` |
+| Document feature builder | `unique_terms_for_document` | Enforce chi-square semantics | Convert tokens to a document-level unique term set so a term contributes at most once per review. | `src/common.py` |
+| Count statistics job | `CountStatsJob.mapper_init`, `mapper`, `combiner`, `reducer` | Aggregate all counts in one raw-data scan | Emit tagged counts for total documents `N`, category documents `N_c`, term documents `N_t`, and term-category documents `N_tc`. | `src/job_count_stats.py` |
+| Metadata extraction | `extract_meta_counts`, `write_meta_json` | Build small broadcast state | Extract `N` and all `N_c` values from the first job output into a compact JSON blob passed to the scoring job. | `src/build_output.py` |
+| Score and top-k job | `compute_chi_square`, `update_top_k`, `ScoreTopKJob.mapper`, `reducer_init`, `reducer`, `reducer_final` | Compute chi-square and keep only top results | Join `N_t` with `N_tc`, compute chi-square per category, and maintain a bounded heap of top 75 terms per category. | `src/common.py`, `src/job_score_topk.py` |
+| Output builder | `read_ranked_terms`, `format_category_line`, `merge_dictionary`, `write_output` | Produce final deliverable text | Sort categories alphabetically, serialize the top 75 terms per category, and emit the merged dictionary line. | `src/build_output.py` |
+| Local debug harness | `run_local_debug`, `run_smoke_case` | Shorten iteration time | Run the same pipeline on the split dev files locally before any HDFS execution. | `src/run_local_debug.sh`, `src/tests/test_smoke_local.py` |
 
 ## 2. Function Call Sequence
 
