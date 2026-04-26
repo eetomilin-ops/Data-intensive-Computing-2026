@@ -26,9 +26,9 @@ These instructions apply to the whole workspace.
 - Do not introduce `pandas`, `numpy`, `scipy`, Spark, or heavyweight text-processing libraries unless explicitly requested.
 
 ## Code Style
-- Keep edits minimal and focused.
-- Document non-obvious method signatures, key/value pairs, and MapReduce stage roles.
+- Use instructions in .github/AI code gen ruleset.md
 - Reuse the explicit function names and file mappings already documented in `arch.md`.
+- If new functions or files are needed, follow the existing naming conventions and document them in `arch.md`.
 
 ## Validation
 - Prefer local validation on the provided development shards before assuming cluster runs.
