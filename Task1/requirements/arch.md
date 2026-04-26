@@ -34,11 +34,11 @@ Recommended execution order for both local debugging and cluster runs:
 6. `build_output.main()` formats category lines and the merged dictionary into `output.txt`.
 7. `package_submission()` bundles output, report, source, and the run script.
 
-### Mermaid Sequence
+### Sequence
 
 ```mermaid
 sequenceDiagram
-    participant Dev as Developer
+    participant Usr as User
     participant Runner as run_pipeline.sh
     participant Count as CountStatsJob
     participant Store as Local FS / HDFS
@@ -46,7 +46,7 @@ sequenceDiagram
     participant Score as ScoreTopKJob
     participant Build as build_output.py
 
-    Dev->>Runner: start pipeline with --runner and --input
+    Usr->>Runner: start pipeline with --runner and --input
     Runner->>Count: run raw review scan
     Count->>Store: write tagged counts
     Runner->>Meta: extract N and category totals
@@ -55,10 +55,10 @@ sequenceDiagram
     Score->>Store: write top-75 terms per category
     Runner->>Build: format final submission output
     Build->>Store: write output.txt
-    Runner-->>Dev: final artifacts ready
+    Runner-->>Usr: final artifacts ready
 ```
 
-## 3. Minimal Stack
+## 3. Stack used
 
 | Layer | Choice | Why this is minimal |
 | --- | --- | --- |
@@ -67,12 +67,12 @@ sequenceDiagram
 | Parsing and text processing | Python standard library: `json`, `re`, `string` | Enough for line-delimited JSON and delimiter-based tokenization. |
 | Math and ranking | Python standard library: `math`, `heapq` | Enough for chi-square calculation and bounded top-k heaps. |
 | CLI and paths | Python standard library: `argparse`, `pathlib`, `subprocess` | Enough for orchestration without extra tooling. |
-| Testing | Python standard library: `unittest` | Avoids adding `pytest` unless the team already prefers it. |
+| Testing | Python standard library: `unittest` | Enough for basic testing. |
 | Shell | `bash` | Minimal wrapper for local debug and Hadoop submission commands. |
 
 Avoid `pandas`, `numpy`, `scipy`, Spark, or any non-standard tokenizer package. They increase deployment risk and are unnecessary for this assignment.
 
-## 4. Suggested Project Structure
+## 4. Project Structure
 
 ```text
 Task1/
