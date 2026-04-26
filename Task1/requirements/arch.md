@@ -95,7 +95,7 @@ flowchart TD
     Z --> AA[package_submission]
 ```
 
-## 3. Stack used
+## 3. Stack
 
 | Layer | Choice | Why this is minimal |
 | --- | --- | --- |
@@ -105,7 +105,6 @@ flowchart TD
 | Math and ranking | Python standard library: `math`, `heapq` | Enough for chi-square calculation and bounded top-k heaps. |
 | CLI and paths | Python standard library: `argparse`, `pathlib`, `subprocess` | Enough for orchestration without extra tooling. |
 | Testing | Python standard library: `unittest` | Enough for basic testing. |
-| Shell | `bash` | Minimal wrapper for local debug and Hadoop submission commands. |
 
 Avoid `pandas`, `numpy`, `scipy`, Spark, or any non-standard tokenizer package. They increase deployment risk and are unnecessary for this assignment.
 
@@ -137,17 +136,12 @@ Task1/                                       assignment root for code, docs, and
     └── report.pdf                           written report artifact included in the zip deliverable
 ```
 
-## 5. Speed-First Implementation Options
+## 5. Speed-First
+*Job 1* computes all counts in one raw-data pass, a tiny meta extractor builds `N` and `N_c`
 
-| Option | Summary | Raw data scans | Speed | Complexity | Risk on public cluster | Recommendation |
-| --- | --- | --- | --- | --- | --- | --- |
-| A. Two-job pipeline plus local output builder | Job 1 computes all counts in one raw-data pass, a tiny meta extractor builds `N` and `N_c`, Job 2 computes chi-square and top 75, local builder writes `output.txt`. | 1 | High | Medium | Low to medium | Recommended |
-| B. Three-job explicit pipeline | Separate jobs for global/category stats, term and term-category counts, then scoring and ranking. | 2 | Medium | Low | Low | Good fallback if implementation clarity matters more than runtime |
-| C. Monolithic multi-step mrjob pipeline | One codebase with more aggressive tagged joins and internal multi-step flow. | 1 | Potentially high | High | High | Not recommended under deadline pressure |
+*Job 2* computes chi-square and top 75, local builder writes `output.txt`.
 
-### Recommended Option: A
-
-Option A is the best tradeoff for this assignment. It minimizes full-dataset scans, keeps dependencies minimal, remains debuggable locally, and avoids overly clever mrjob internals that are risky on a shared Hadoop cluster.
+It is the best tradeoff for this assignment which minimizes full-dataset scans, keeps dependencies minimal, remains debuggable locally, and avoids overly clever mrjob internals that are risky on a shared Hadoop cluster.
 
 ## 6. Architectural Decision Records
 
@@ -179,7 +173,7 @@ Option A is the best tradeoff for this assignment. It minimizes full-dataset sca
 - Add a very small fixture with known expected chi-square ordering to validate correctness before scale tests.
 - Only switch to the full HDFS path after local correctness and one small-cluster sanity run are stable.
 
-## 8. Textual Function Dependency Tree
+## 8. Function Dependency Tree
 
 ```text
 run_pipeline.sh
