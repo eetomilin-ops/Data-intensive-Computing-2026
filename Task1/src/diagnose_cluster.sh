@@ -4,6 +4,14 @@
 # Output: diagnostic report printed to stdout and optionally written to a file.
 # Purpose: collect the cluster-side environment details needed to choose a compatible local stack.
 
+# Usage:
+# bash Task1/src/diagnose_cluster.sh
+# Save output to a file:
+# bash Task1/src/diagnose_cluster.sh cluster_probe.txt
+# Help: 
+# bash Task1/src/diagnose_cluster.sh --help
+
+
 set -euo pipefail
 
 usage() {
