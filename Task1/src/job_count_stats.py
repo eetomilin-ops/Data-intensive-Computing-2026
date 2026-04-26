@@ -1,3 +1,4 @@
+from __future__ import annotations
 from mrjob.job import MRJob
 from mrjob.step import MRStep
 from common import (

@@ -1,3 +1,4 @@
+from __future__ import annotations
 # Shared configuration constants for local and Hadoop execution.
 
 from pathlib import Path
