@@ -58,6 +58,41 @@ sequenceDiagram
     Runner-->>Usr: final artifacts ready
 ```
 
+### Dataflow
+
+```mermaid
+flowchart TD
+    A[run_pipeline.main] --> B[parse_args]
+    B --> C[resolve_mode]
+    C --> D[load_stopwords]
+    C --> E[compile_tokenizer]
+    D --> F[CountStatsJob.mapper_init]
+    E --> F
+    F --> G[safe_parse_review]
+    G --> H[extract_required_fields]
+    H --> I[tokenize]
+    I --> J[filter_tokens]
+    J --> K[unique_terms_for_document]
+    K --> L[CountStatsJob.mapper]
+    L --> M[CountStatsJob.combiner]
+    M --> N[CountStatsJob.reducer]
+    N --> O[extract_meta_counts]
+    O --> P[write_meta_json]
+    N --> Q[ScoreTopKJob.mapper]
+    P --> Q
+    Q --> R[ScoreTopKJob.reducer_init]
+    R --> S[compute_chi_square]
+    S --> T[update_top_k]
+    T --> U[ScoreTopKJob.reducer]
+    U --> V[ScoreTopKJob.reducer_final]
+    V --> W[read_ranked_terms]
+    W --> X[format_category_line]
+    W --> Y[merge_dictionary]
+    X --> Z[write_output]
+    Y --> Z
+    Z --> AA[package_submission]
+```
+
 ## 3. Stack used
 
 | Layer | Choice | Why this is minimal |
