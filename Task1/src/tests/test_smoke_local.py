@@ -5,7 +5,7 @@ from settings import LOCAL_DEV_INPUTS
 SRC_DIR = os.path.join(os.path.dirname(__file__), "..")
 
 # runs the full local pipeline against the dev shards and checks output.txt exists
-def run_smoke_case():
+def test_smoke_local():
     with tempfile.TemporaryDirectory() as outdir:
         result = subprocess.run(
             ["bash", os.path.join(SRC_DIR, "run_pipeline.sh"), "--output", outdir],
@@ -23,5 +23,5 @@ def run_smoke_case():
         assert ":" in first_cat[1]
 
 if __name__ == "__main__":
-    run_smoke_case()
+    test_smoke_local()
     print("smoke test passed")
