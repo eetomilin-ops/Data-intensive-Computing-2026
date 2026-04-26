@@ -26,12 +26,12 @@
 
 Recommended execution order for both local debugging and cluster runs:
 
-1. `run_pipeline.main()` parses arguments and selects `local` or `hadoop` mode.
-2. `load_stopwords()` and `compile_tokenizer()` prepare immutable preprocessing state.
-3. `CountStatsJob.run()` scans raw review documents and writes aggregated counts.
-4. `extract_meta_counts()` reads only the meta records needed for `N` and `N_c`.
-5. `ScoreTopKJob.run(meta)` reads the count output, computes chi-square, and keeps top 75 terms per category.
-6. `build_output.main()` formats category lines and the merged dictionary into `output.txt`.
+1. `main()`, `parse_args()`, `resolve_mode()`, and `run_pipeline()` in `run_pipeline.sh` select the runner and orchestrate the pipeline.
+2. `load_stopwords()` and `compile_tokenizer()` prepare immutable preprocessing state for the counting stage.
+3. `CountStatsJob.mapper_init()`, `mapper()`, `combiner()`, and `reducer()` scan raw review documents and write aggregated counts.
+4. `extract_meta_counts()` and `write_meta_json()` derive and persist the `N` and `N_c` metadata needed by scoring.
+5. `ScoreTopKJob.mapper()`, `reducer_init()`, `compute_chi_square()`, `update_top_k()`, `reducer()`, and `reducer_final()` compute chi-square values and keep top 75 terms per category.
+6. `main()`, `read_ranked_terms()`, `format_category_line()`, `merge_dictionary()`, and `write_output()` in `build_output.py` produce `output.txt`.
 7. `package_submission()` bundles output, report, source, and the run script.
 
 ### Sequence
@@ -46,15 +46,17 @@ sequenceDiagram
     participant Score as ScoreTopKJob
     participant Build as build_output.py
 
-    Usr->>Runner: start pipeline with --runner and --input
-    Runner->>Count: run raw review scan
+    Usr->>Runner: main / parse_args / resolve_mode / run_pipeline
+    Runner->>Count: mapper_init / mapper / combiner / reducer
     Count->>Store: write tagged counts
-    Runner->>Meta: extract N and category totals
+    Runner->>Meta: extract_meta_counts / write_meta_json
     Meta->>Store: write meta.json
-    Runner->>Score: run count-to-score phase with meta.json
+    Runner->>Score: mapper / reducer_init / reducer / reducer_final
+    Score->>Score: compute_chi_square / update_top_k
     Score->>Store: write top-75 terms per category
-    Runner->>Build: format final submission output
+    Runner->>Build: main / read_ranked_terms / format_category_line / merge_dictionary / write_output
     Build->>Store: write output.txt
+    Runner->>Build: package_submission
     Runner-->>Usr: final artifacts ready
 ```
 
