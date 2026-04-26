@@ -52,7 +52,18 @@ def normalize(series):
     """Normalize relative to first valid entry; assumes sorted input."""
 ````
 
-### 8. Mix Coding Styles Slightly
+### 8. Use Signature Comments for Function Specs
+For planned or stubbed typed functions, use a short comment above the function and inline comments for purpose, arguments, and return value.
+
+Good sample
+```python
+# build one stopword lookup for the tokenizer stage
+def load_stopwords(  # parse normalized stopwords from file
+    stopwords_path: str | Path,  # source file with one word per line
+) -> set[str]:  # lookup used during token filtering
+```
+
+### 9. Mix Coding Styles Slightly
 Minor variation in formatting or structure is acceptable. Avoid rigid, repeated templates.
 
 ---
@@ -110,4 +121,5 @@ Before finalizing code, verify:
  - Error handling reflects real constraints
  - No repeated “AI-style” pipelines
  - Docstrings are sparse and non-uniform
+ - Stubbed function specs use the multiline signature comment template
  - Code is slightly irregular but still clear

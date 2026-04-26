@@ -27,6 +27,7 @@ These instructions apply to the whole workspace.
 
 ## Code Style
 - Use instructions in .github/AI code gen ruleset.md
+- When sketching or stubbing typed Python functions, use the multiline signature-comment template from the ruleset instead of placeholder docstrings.
 - Reuse the explicit function names and file mappings already documented in `arch.md`.
 - If new functions or files are needed, follow the existing naming conventions and document them in `arch.md`.
 

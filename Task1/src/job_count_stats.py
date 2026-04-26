@@ -34,30 +34,32 @@ class CountStatsJob:
     Purpose: aggregate all required count statistics in a single raw-data scan.
     """
 
-    def mapper_init(self) -> None:
-        """Input: no per-record input.
-        Output: initialized mapper state.
-        Purpose: prepare stopwords and tokenizer once per mapper process.
-        """
+    # warm up mapper state once instead of per review line
+    def mapper_init(  # load tokenizer and stopwords
+        self: "CountStatsJob",  # current job instance
+    ) -> None:  # mapper state prepared in-place
         pass
 
-    def mapper(self, _: object, line: str) -> Iterable[tuple[tuple[str, ...], int]]:
-        """Input: ignored key and one raw dataset line.
-        Output: tagged count tuples for downstream aggregation.
-        Purpose: emit document-presence counts derived from one review.
-        """
+    # emit the compact count tags from one review
+    def mapper(  # derive N, Nc, Nt, and Ntc updates
+        self: "CountStatsJob",  # current job instance
+        _: object,  # unused streaming key
+        line: str,  # raw review line from input
+    ) -> Iterable[tuple[tuple[str, ...], int]]:  # tagged count stream
         pass
 
-    def combiner(self, key: tuple[str, ...], values: Iterable[int]) -> Iterable[tuple[tuple[str, ...], int]]:
-        """Input: tagged count key and partial integer counts.
-        Output: locally aggregated count tuples.
-        Purpose: reduce shuffle volume before the reducer phase.
-        """
+    # shrink shuffle traffic before the reducer sees the data
+    def combiner(  # aggregate partial mapper counts
+        self: "CountStatsJob",  # current job instance
+        key: tuple[str, ...],  # tagged count key
+        values: Iterable[int],  # partial counts for the key
+    ) -> Iterable[tuple[tuple[str, ...], int]]:  # locally summed counts
         pass
 
-    def reducer(self, key: tuple[str, ...], values: Iterable[int]) -> Iterable[tuple[tuple[str, ...], int]]:
-        """Input: tagged count key and aggregated integer counts.
-        Output: final count record for that key.
-        Purpose: finalize global and per-category statistics needed by later stages.
-        """
+    # finalize the count records that later stages consume
+    def reducer(  # sum all counts for one tagged key
+        self: "CountStatsJob",  # current job instance
+        key: tuple[str, ...],  # tagged count key
+        values: Iterable[int],  # combined counts for the key
+    ) -> Iterable[tuple[tuple[str, ...], int]]:  # final count records
         pass

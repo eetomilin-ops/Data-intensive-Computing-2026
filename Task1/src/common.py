@@ -12,81 +12,78 @@ DEFAULT_TOKEN_DELIMITER_PATTERN = TOKEN_DELIMITER_PATTERN
 DEFAULT_TOP_K_TERMS = TOP_K_TERMS
 
 
-def load_stopwords(stopwords_path: str | Path) -> set[str]:
-    """Input: path to the stopword file.
-    Output: set of normalized stopwords.
-    Purpose: load immutable stopword data for local and Hadoop runs.
-    """
+# build one stopword lookup for the mapper or local runner
+def load_stopwords(  # parse normalized stopwords from file
+    stopwords_path: str | Path,  # path to the stopword list
+) -> set[str]:  # lookup set used by token filtering
     pass
 
 
-def compile_tokenizer() -> Callable[[str], list[str]]:
-    """Input: no runtime input.
-    Output: callable that tokenizes raw review text into candidate terms.
-    Purpose: centralize delimiter handling required by the assignment.
-    """
+# compile the assignment delimiter regex once so hot loops stay lean
+def compile_tokenizer(  # return tokenizer bound to team rules
+) -> Callable[[str], list[str]]:  # callable that splits one review
     pass
 
 
-def tokenize(review_text: str, tokenizer: Callable[[str], list[str]]) -> list[str]:
-    """Input: raw review text and a compiled tokenizer callable.
-    Output: token list before stopword and length filtering.
-    Purpose: convert one review string into normalized candidate tokens.
-    """
+# keep raw token extraction separate from later filtering
+def tokenize(  # split one review into candidate tokens
+    review_text: str,  # raw review text from input
+    tokenizer: Callable[[str], list[str]],  # compiled tokenizer callable
+) -> list[str]:  # candidate tokens before filtering
     pass
 
 
-def filter_tokens(tokens: Iterable[str], stopwords: set[str]) -> list[str]:
-    """Input: token stream and stopword set.
-    Output: filtered token list without stopwords or single-character tokens.
-    Purpose: apply assignment preprocessing rules after tokenization.
-    """
+# apply the cheap filters after tokenization, before dedup
+def filter_tokens(  # drop stopwords and too-short tokens
+    tokens: Iterable[str],  # candidate token stream
+    stopwords: set[str],  # normalized stopword lookup
+) -> list[str]:  # filtered tokens ready for dedup
     pass
 
 
-def safe_parse_review(line: str) -> dict[str, Any] | None:
-    """Input: one raw line from the review dataset.
-    Output: parsed review dictionary or None for malformed input.
-    Purpose: isolate JSON decoding and malformed-record handling.
-    """
+# fail fast on malformed lines before any text work
+def safe_parse_review(  # decode one JSON review line
+    line: str,  # raw line from the dataset
+) -> dict[str, Any] | None:  # parsed review mapping or None
     pass
 
 
-def extract_required_fields(review: dict[str, Any]) -> tuple[str, str] | None:
-    """Input: parsed review dictionary.
-    Output: `(category, review_text)` tuple or None when required fields are missing.
-    Purpose: trim records to the fields needed by the pipeline.
-    """
+# trim records early so later code only touches the needed fields
+def extract_required_fields(  # pull category and review text
+    review: dict[str, Any],  # parsed review mapping
+) -> tuple[str, str] | None:  # category and text pair or None
     pass
 
 
-def unique_terms_for_document(tokens: Iterable[str]) -> set[str]:
-    """Input: filtered tokens from a single review document.
-    Output: unique term set for that document.
-    Purpose: enforce document-presence semantics for chi-square counts.
-    """
+# collapse repeated tokens before any count emission
+def unique_terms_for_document(  # deduplicate one document token list
+    tokens: Iterable[str],  # filtered tokens for one review
+) -> set[str]:  # unique term set for doc-presence counts
     pass
 
 
-def compute_chi_square(total_docs: int, category_docs: int, term_docs: int, term_category_docs: int) -> float:
-    """Input: global, category, term, and term-category document counts.
-    Output: chi-square score for one term-category pair.
-    Purpose: centralize score calculation for ranking logic.
-    """
+# keep score math in one place so ranking code stays small
+def compute_chi_square(  # score one term against one category
+    total_docs: int,  # all review documents
+    category_docs: int,  # documents in the current category
+    term_docs: int,  # documents containing the term
+    term_category_docs: int,  # category docs containing the term
+) -> float:  # chi-square score for ranking
     pass
 
 
-def update_top_k(top_k_heap: list[tuple[float, str]], item: tuple[float, str], limit: int) -> list[tuple[float, str]]:
-    """Input: existing bounded heap, candidate `(score, term)` item, and heap size limit.
-    Output: updated heap structure.
-    Purpose: keep only the best-scoring terms per category without full sorting in memory.
-    """
+# bound memory by trimming losers as soon as they arrive
+def update_top_k(  # maintain one category heap
+    top_k_heap: list[tuple[float, str]],  # current bounded heap
+    item: tuple[float, str],  # candidate score and term
+    limit: int,  # max retained terms
+) -> list[tuple[float, str]]:  # updated bounded heap
     pass
 
 
-def format_term_score(term: str, score: float) -> str:
-    """Input: term text and its score.
-    Output: serialized `term:score` string.
-    Purpose: keep output formatting consistent across local and cluster runs.
-    """
+# keep serialized term output consistent across stages
+def format_term_score(  # build one term:score fragment
+    term: str,  # output term text
+    score: float,  # computed chi-square score
+) -> str:  # serialized fragment for output
     pass
