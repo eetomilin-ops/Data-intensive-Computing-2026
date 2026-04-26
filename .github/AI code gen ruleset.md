@@ -54,13 +54,14 @@ def normalize(series):
 
 ### 8. Use Signature Comments for Function Specs
 For planned or stubbed typed functions, use a short comment above the function and inline comments for purpose, arguments, and return value.
+Align all inline comments in that signature block to the longest pre-comment signature line plus 4 spaces.
 
 Good sample
 ```python
 # build one stopword lookup for the tokenizer stage
-def load_stopwords(  # parse normalized stopwords from file
-    stopwords_path: str | Path,  # source file with one word per line
-) -> set[str]:  # lookup used during token filtering
+def load_stopwords(               # parse normalized stopwords from file
+    stopwords_path: str | Path,   # source file with one word per line
+) -> set[str]:                    # lookup used during token filtering
 ```
 
 ### 9. Mix Coding Styles Slightly
@@ -122,4 +123,5 @@ Before finalizing code, verify:
  - No repeated “AI-style” pipelines
  - Docstrings are sparse and non-uniform
  - Stubbed function specs use the multiline signature comment template
+ - Inline signature comments are aligned to the widest signature line plus 4 spaces
  - Code is slightly irregular but still clear

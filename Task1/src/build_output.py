@@ -13,59 +13,59 @@ TARGET_RUNTIME = TARGET_PLATFORM
 
 
 # keep the reducer metadata compact and explicit
-def extract_meta_counts(  # read N and Nc from count output
-    counts_path: str | Path,  # path to first-stage count records
-) -> dict[str, Any]:  # metadata mapping for scoring
+def extract_meta_counts(          # read N and Nc from count output
+    counts_path: str | Path,      # path to first-stage count records
+) -> dict[str, Any]:             # metadata mapping for scoring
     pass
 
 
 # persist the small metadata blob so the scoring stage can reuse it
-def write_meta_json(  # write metadata to json
-    meta: dict[str, Any],  # total and category count metadata
-    output_path: str | Path,  # destination file path
-) -> Path:  # written metadata path
+def write_meta_json(              # write metadata to json
+    meta: dict[str, Any],         # total and category count metadata
+    output_path: str | Path,      # destination file path
+) -> Path:                       # written metadata path
     pass
 
 
 # normalize reducer output before formatting the final file
-def read_ranked_terms(  # load ranked terms by category
-    ranked_terms_path: str | Path,  # path to scored category output
-) -> dict[str, list[tuple[str, float]]]:  # in-memory ranked mapping
+def read_ranked_terms(                           # load ranked terms by category
+    ranked_terms_path: str | Path,               # path to scored category output
+) -> dict[str, list[tuple[str, float]]]:        # in-memory ranked mapping
     pass
 
 
 # keep the assignment output format in one place
-def format_category_line(  # serialize one category result line
-    category: str,  # category label
-    ranked_terms: list[tuple[str, float]],  # ranked term-score pairs
-) -> str:  # formatted output line
+def format_category_line(                     # serialize one category result line
+    category: str,                            # category label
+    ranked_terms: list[tuple[str, float]],    # ranked term-score pairs
+) -> str:                                    # formatted output line
     pass
 
 
 # merge the per-category winners into one stable dictionary line
-def merge_dictionary(  # gather the unique output vocabulary
+def merge_dictionary(                                    # gather the unique output vocabulary
     category_terms: dict[str, list[tuple[str, float]]],  # ranked terms by category
-) -> list[str]:  # sorted merged dictionary terms
+) -> list[str]:                                          # sorted merged dictionary terms
     pass
 
 
 # write the final artifact once all formatting decisions are done
-def write_output(  # materialize output.txt
+def write_output(                                        # materialize output.txt
     category_terms: dict[str, list[tuple[str, float]]],  # ranked category mapping
-    output_path: str | Path,  # destination output file path
-) -> Path:  # written output path
+    output_path: str | Path,                             # destination output file path
+) -> Path:                                               # written output path
     pass
 
 
 # keep the final zip layout aligned with the submission contract
-def package_submission(  # bundle the deliverables into one archive
-    source_root: str | Path,  # project root to package
-    archive_path: str | Path,  # destination archive path
-) -> Path:  # created archive path
+def package_submission(          # bundle the deliverables into one archive
+    source_root: str | Path,     # project root to package
+    archive_path: str | Path,    # destination archive path
+) -> Path:                      # created archive path
     pass
 
 
 # expose the formatting and packaging flow as one entry point
-def main(  # drive final output generation
-) -> None:  # process side effects only
+def main(          # drive final output generation
+) -> None:        # process side effects only
     pass

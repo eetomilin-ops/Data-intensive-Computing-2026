@@ -17,29 +17,29 @@ class ScoreTopKJob:
     """
 
     # reshape count output into something the reducer can join cheaply
-    def mapper(  # prepare grouped score inputs
-        self: "ScoreTopKJob",  # current job instance
-        _: object,  # unused streaming key
-        line: str,  # serialized count record
+    def mapper(                                        # prepare grouped score inputs
+        self: "ScoreTopKJob",                         # current job instance
+        _: object,                                     # unused streaming key
+        line: str,                                     # serialized count record
     ) -> Iterable[tuple[str, tuple[str, str, int]]]:  # keyed score input tuples
         pass
 
     # initialize reducer-side metadata once for the whole partition
-    def reducer_init(  # load meta and ranking state
-        self: "ScoreTopKJob",  # current job instance
-    ) -> None:  # reducer state prepared in-place
+    def reducer_init(                # load meta and ranking state
+        self: "ScoreTopKJob",       # current job instance
+    ) -> None:                       # reducer state prepared in-place
         pass
 
     # join the grouped counts and emit scored candidates
-    def reducer(  # compute per-key scores for ranking
-        self: "ScoreTopKJob",  # current job instance
-        key: str,  # reducer grouping key
-        values: Iterable[tuple[str, str, int]],  # grouped count tuples
-    ) -> Iterable[tuple[str, tuple[str, float]]]:  # scored term tuples
+    def reducer(                                          # compute per-key scores for ranking
+        self: "ScoreTopKJob",                           # current job instance
+        key: str,                                        # reducer grouping key
+        values: Iterable[tuple[str, str, int]],          # grouped count tuples
+    ) -> Iterable[tuple[str, tuple[str, float]]]:       # scored term tuples
         pass
 
     # flush the bounded heaps after all grouped values are consumed
-    def reducer_final(  # emit final ranked category lists
-        self: "ScoreTopKJob",  # current job instance
-    ) -> Iterable[tuple[str, list[tuple[str, float]]]]:  # top-75 lists by category
+    def reducer_final(                              # emit final ranked category lists
+        self: "ScoreTopKJob",                      # current job instance
+    ) -> Iterable[tuple[str, list[tuple[str, float]]]]:    # top-75 lists by category
         pass
