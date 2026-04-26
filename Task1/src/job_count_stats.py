@@ -35,13 +35,13 @@ class CountStatsJob:
     """
 
     # warm up mapper state once instead of per review line
-    def mapper_init(               # load tokenizer and stopwords
+    def mapper_init(
         self: "CountStatsJob",    # current job instance
     ) -> None:                    # mapper state prepared in-place
         pass
 
     # emit the compact count tags from one review
-    def mapper(                                         # derive N, Nc, Nt, and Ntc updates
+    def mapper(
         self: "CountStatsJob",                         # current job instance
         _: object,                                      # unused streaming key
         line: str,                                      # raw review line from input
@@ -49,7 +49,7 @@ class CountStatsJob:
         pass
 
     # shrink shuffle traffic before the reducer sees the data
-    def combiner(                                             # aggregate partial mapper counts
+    def combiner(
         self: "CountStatsJob",                               # current job instance
         key: tuple[str, ...],                                 # tagged count key
         values: Iterable[int],                                # partial counts for the key
@@ -57,7 +57,7 @@ class CountStatsJob:
         pass
 
     # finalize the count records that later stages consume
-    def reducer(                                              # sum all counts for one tagged key
+    def reducer(
         self: "CountStatsJob",                               # current job instance
         key: tuple[str, ...],                                 # tagged count key
         values: Iterable[int],                                # combined counts for the key

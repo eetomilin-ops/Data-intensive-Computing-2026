@@ -53,18 +53,33 @@ def normalize(series):
 ````
 
 ### 8. Use Signature Comments for Function Specs
-For planned or stubbed typed functions, use a short comment above the function and inline comments for purpose, arguments, and return value.
+For planned or stubbed typed functions, use a short comment above the function and inline comments for arguments and return value.
 Align all inline comments in that signature block to the longest pre-comment signature line plus 4 spaces.
 
 Good sample
 ```python
 # build one stopword lookup for the tokenizer stage
-def load_stopwords(               # parse normalized stopwords from file
+def load_stopwords(
     stopwords_path: str | Path,   # source file with one word per line
 ) -> set[str]:                    # lookup used during token filtering
 ```
 
-### 9. Mix Coding Styles Slightly
+### 9. Separate Block and Expression Comments
+Use inline comments for expressions only, after 4 spaces.
+Use a short comment above code blocks such as functions, loops, try blocks, and condition groups.
+When several inline comments appear in one block, align them to the longest expression where practical.
+
+Good sample
+```python
+value = scale(raw)    # normalize before ranking
+
+# loop once and keep the local aggregate small
+for key in items:
+    short = a + b          # first partial score
+    wider_name = c + d     # second partial score
+```
+
+### 10. Mix Coding Styles Slightly
 Minor variation in formatting or structure is acceptable. Avoid rigid, repeated templates.
 
 ---
@@ -124,4 +139,5 @@ Before finalizing code, verify:
  - Docstrings are sparse and non-uniform
  - Stubbed function specs use the multiline signature comment template
  - Inline signature comments are aligned to the widest signature line plus 4 spaces
+ - Block comments sit above control structures and inline comments are kept for expressions
  - Code is slightly irregular but still clear
