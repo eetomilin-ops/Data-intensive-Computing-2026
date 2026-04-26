@@ -75,50 +75,30 @@ Avoid `pandas`, `numpy`, `scipy`, Spark, or any non-standard tokenizer package. 
 ## 4. Project Structure
 
 ```text
-Task1/
-├── requirements/
-│   ├── arch.md
-│   ├── Checklist.md
-│   ├── LDBvars.txt
-│   ├── Requiremnts.md
-│   ├── Assignment_1_Instructions.pdf
-│   ├── diagnose_cluster.sh
-│   └── Assets/
-├── src/
-│   ├── settings.py
-│   ├── common.py
-│   ├── job_count_stats.py
-│   ├── job_score_topk.py
-│   ├── build_output.py
-│   ├── run_pipeline.sh
-│   ├── run_local_debug.sh
-│   └── tests/
-│       ├── test_common.py
-│       ├── test_chi_square.py
-│       └── test_smoke_local.py
-└── report/
-    └── report.pdf
+Task1/                                       assignment root for code, docs, and final artifacts
+├── requirements/                            planning docs, requirements, probe output, and provided assets
+│   ├── arch.md                              architecture plan and implementation guidance
+│   ├── Checklist.md                         execution checklist for implementation and submission
+│   ├── LDBvars.txt                          saved cluster probe output for verified target facts
+│   ├── Requiremnts.md                       condensed assignment requirements and target notes
+│   ├── Assignment_1_Instructions.pdf        authoritative assignment specification
+│   ├── diagnose_cluster.sh                  target-cluster diagnostic shell probe
+│   └── Assets/                              provided stopwords, dev data shards, and helper script
+├── src/                                     implementation code and runnable entry points
+│   ├── settings.py                          shared constants for paths, tags, limits, and defaults
+│   ├── common.py                            shared parsing, tokenization, scoring, and formatting helpers
+│   ├── job_count_stats.py                   first mrjob stage for N, Nc, Nt, and Ntc counts
+│   ├── job_score_topk.py                    second mrjob stage for chi-square scoring and top-k selection
+│   ├── build_output.py                      metadata extraction, final formatting, and packaging helpers
+│   ├── run_pipeline.sh                      main local and Hadoop orchestration entry point
+│   ├── run_local_debug.sh                   fast local smoke-run wrapper for dev inputs
+│   └── tests/                               narrow local validation and smoke tests
+│       ├── test_common.py                   tests for tokenization, filtering, and score helpers
+│       ├── test_chi_square.py               tests for ranking order and top-k retention behavior
+│       └── test_smoke_local.py              small end-to-end local pipeline smoke test
+└── report/                                  final report location for submission packaging
+    └── report.pdf                           written report artifact included in the zip deliverable
 ```
-
-| Path | Purpose |
-| --- | --- |
-| `requirements/arch.md` | Architecture planning note and implementation guidance. |
-| `requirements/Checklist.md` | Execution checklist for implementation and submission. |
-| `requirements/LDBvars.txt` | Saved cluster probe output used to confirm the target runtime. |
-| `requirements/Requiremnts.md` | Condensed assignment requirements captured from the PDF. |
-| `requirements/diagnose_cluster.sh` | Shell probe script used to inspect the target cluster environment. |
-| `requirements/Assets/` | Provided local dev data shards, stopwords, and helper script. |
-| `src/settings.py` | Shared constants for target paths, tokenization rules, runner names, counters, and output naming. |
-| `src/common.py` | Shared tokenizer, stopword loader, chi-square function, record tags, and formatting helpers. |
-| `src/job_count_stats.py` | First mrjob job that emits and aggregates `N`, `N_c`, `N_t`, and `N_tc`. |
-| `src/job_score_topk.py` | Second mrjob job that joins counts, computes chi-square, and keeps the top 75 per category. |
-| `src/build_output.py` | Final formatter for category lines and the merged alphabetical dictionary. |
-| `src/run_pipeline.sh` | Main entry point for local and Hadoop execution. |
-| `src/run_local_debug.sh` | Fast local smoke-run wrapper against the split dev files. |
-| `src/tests/test_common.py` | Unit tests for tokenization, stopword filtering, and chi-square math. |
-| `src/tests/test_chi_square.py` | Focused tests for score correctness and ordering behavior. |
-| `src/tests/test_smoke_local.py` | Small end-to-end local pipeline smoke test. |
-| `report/report.pdf` | Final written report artifact for submission packaging. |
 
 ## 5. Speed-First Implementation Options
 

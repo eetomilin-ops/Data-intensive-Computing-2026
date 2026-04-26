@@ -9,6 +9,7 @@
 8. Scoring and deadline
 9. Verified target environment
 10. Planned source layout
+11. Real wins for speed
 
 
 **req1**
@@ -102,3 +103,14 @@ Planned source tree must include src/build_output.py for metadata extraction, ou
 Planned source tree must include src/run_pipeline.sh for cluster and local orchestration.
 Planned source tree must include src/run_local_debug.sh for fast local smoke runs.
 Planned source tree may include src/tests/ for narrow local validation.
+
+**req11**
+Real speed wins are architectural and emission-related, not forced in-memory prefetching.
+Use one raw-data scan for count collection whenever possible.
+Deduplicate terms per review document before emitting counts.
+Use a combiner to reduce shuffle volume aggressively.
+Keep emitted keys and values compact.
+Load stopwords and compile the tokenizer once per mapper process.
+Avoid unnecessary extra MapReduce stages.
+Avoid avoidable Python object churn inside the tight loop.
+Use a bounded heap for top-75 selection instead of sorting large groups in memory.
