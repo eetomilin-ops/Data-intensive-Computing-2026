@@ -12,7 +12,7 @@
 | Block | Main functions | Purpose | Description | Implemented in |
 | --- | --- | --- | --- | --- |
 | Configuration | `TARGET_PLATFORM`, `TOP_K_TERMS`, `TOKEN_DELIMITER_PATTERN`, `DEFAULT_*` constants | Keep shared runtime values centralized | Define stable paths, tags, limits, and tokenization constants used across jobs and scripts. | `src/settings.py` |
-| Orchestration | `main`, `parse_args`, `resolve_mode`, `run_pipeline`, `package_submission` | Control execution | Select local or Hadoop runner, resolve input and output paths, and execute the pipeline in the correct order. | `src/run_pipeline.sh`, `src/build_output.py` |
+| Orchestration | `main`, `parse_args`, `resolve_mode`, `run_pipeline` | Control execution | Select local or Hadoop runner, resolve input and output paths, and execute the pipeline in the correct order. | `src/run_pipeline.sh`, `src/build_output.py` |
 | Input parsing | `safe_parse_review`, `extract_required_fields` | Keep ingest cheap and safe | Read one JSON review per line, skip malformed records, and keep only `reviewText` and `category` for downstream work. | `src/common.py` |
 | Text normalization | `load_stopwords`, `compile_tokenizer`, `tokenize`, `filter_tokens` | Produce canonical terms | Split text with the required delimiters, lowercase, remove stopwords, and drop single-character tokens. | `src/common.py` |
 | Document feature builder | `unique_terms_for_document` | Enforce chi-square semantics | Convert tokens to a document-level unique term set so a term contributes at most once per review. | `src/common.py` |
@@ -32,7 +32,6 @@ Recommended execution order for both local debugging and cluster runs:
 4. `extract_meta_counts()` and `write_meta_json()` derive and persist the `N` and `N_c` metadata needed by scoring.
 5. `ScoreTopKJob.mapper()`, `reducer_init()`, `compute_chi_square()`, `update_top_k()`, `reducer()`, and `reducer_final()` compute chi-square values and keep top 75 terms per category.
 6. `main()`, `read_ranked_terms()`, `format_category_line()`, `merge_dictionary()`, and `write_output()` in `build_output.py` produce `output.txt`.
-7. `package_submission()` bundles output, report, source, and the run script.
 
 ### Sequence
 
@@ -56,7 +55,6 @@ sequenceDiagram
     Score->>Store: write top-75 terms per category
     Runner->>Build: main / read_ranked_terms / format_category_line / merge_dictionary / write_output
     Build->>Store: write output.txt
-    Runner->>Build: package_submission
     Runner-->>Usr: final artifacts ready
 ```
 
@@ -92,7 +90,6 @@ flowchart TD
     W --> Y[merge_dictionary]
     X --> Z[write_output]
     Y --> Z
-    Z --> AA[package_submission]
 ```
 
 ## 3. Stack
@@ -125,15 +122,14 @@ Task1/                                       assignment root for code, docs, and
 │   ├── common.py [R]                        shared parsing, tokenization, scoring, and formatting helpers
 │   ├── job_count_stats.py [R]               first mrjob stage for N, Nc, Nt, and Ntc counts
 │   ├── job_score_topk.py [R]                second mrjob stage for chi-square scoring and top-k selection
-│   ├── build_output.py [R]                  metadata extraction, final formatting, and packaging helpers
+│   ├── build_output.py [R]                  metadata extraction and final output formatting
 │   ├── run_pipeline.sh [R]                  main local and Hadoop orchestration entry point
 │   ├── run_local_debug.sh [R]               fast local smoke-run wrapper for dev inputs
 │   └── tests/                               narrow local validation and smoke tests
 │       ├── test_common.py                   tests for tokenization, filtering, and score helpers
 │       ├── test_chi_square.py               tests for ranking order and top-k retention behavior
 │       └── test_smoke_local.py              small end-to-end local pipeline smoke test
-└── report/                                  final report location for submission packaging
-    └── report.pdf                           written report artifact included in the zip deliverable
+
 ```
 
 ## 5. Speed-First
@@ -205,7 +201,6 @@ run_pipeline.sh
         |   |-- format_category_line
         |   |-- merge_dictionary
         |   `-- write_output
-        `-- package_submission
 
 run_local_debug.sh
 `-- main

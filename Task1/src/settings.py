@@ -33,8 +33,6 @@ COUNTER_TAG_CATEGORY_DOCS      = "NC"
 COUNTER_TAG_TERM_DOCS          = "NT"
 COUNTER_TAG_TERM_CATEGORY_DOCS = "NTC"
 
-# output file and directory names
-DEFAULT_COUNTS_DIRNAME  = "counts"
+# output file name
 DEFAULT_META_FILENAME   = "meta.json"
-DEFAULT_RANKED_DIRNAME  = "ranked_terms"
 DEFAULT_OUTPUT_FILENAME = "output.txt"

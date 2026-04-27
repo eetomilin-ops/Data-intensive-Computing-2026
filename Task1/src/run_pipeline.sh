@@ -156,7 +156,7 @@ run_pipeline() {
   fi
 
   echo "done -> $OUTPUT_FILE"
-  [[ -n "$LOCAL_WORK" ]] && rm -rf "$LOCAL_WORK"
+  if [[ -n "$LOCAL_WORK" ]]; then rm -rf "$LOCAL_WORK"; fi
 }
 
 main() {
