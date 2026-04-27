@@ -135,7 +135,7 @@ flowchart TB
 
 **Metadata extraction:** output — `meta.json` with `N` and `N_c`, broadcast to Job 2.
 
-**Scoring & Top-k (Job 2):** 
+**Scoring & Top-k (Job 2):** output — per-category ranked `term:score` strings, top 75 per category.
 
 **Output assembly:** output — `output.txt` with categories alphabetically, top-75 terms per category, and merged dictionary line.
 
