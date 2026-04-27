@@ -139,7 +139,7 @@ It is the best tradeoff for this assignment which minimizes full-dataset scans, 
 
 ## 6. Architectural decision records
 
-Only accepted listed. Options were discarded for short.
+Only accepted listed. Alternatives were discarded for short.
 
 ### ADR-001: Choose a two-job pipeline
 
