@@ -15,6 +15,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOCAL_WORK=""   # set in resolve_mode for hadoop runs; used by cleanup
 HADOOP_STREAMING_JAR="${HADOOP_STREAMING_JAR:-}"
 
+is_streaming_jar() {
+  local candidate="$1"
+  [[ -f "$candidate" ]] || return 1
+  [[ "$candidate" == *streaming*.jar ]] || return 1
+  return 0
+}
+
 to_hdfs_uri() {
   local path="$1"
   if [[ "$path" == hdfs://* ]]; then
@@ -28,23 +35,24 @@ to_hdfs_uri() {
 
 discover_hadoop_streaming_jar() {
   if [[ -n "${HADOOP_STREAMING_JAR:-}" ]]; then
-    return 0
+    if is_streaming_jar "$HADOOP_STREAMING_JAR"; then
+      return 0
+    fi
+    echo "ERROR: HADOOP_STREAMING_JAR is set but is not a Hadoop streaming jar: $HADOOP_STREAMING_JAR" >&2
+    echo "Use a path matching *streaming*.jar" >&2
+    exit 1
   fi
 
   local cp candidate
   cp=$(hadoop classpath --glob 2>/dev/null || true)
   candidate=$(printf '%s' "$cp" | tr ':' '\n' | grep -m1 -E 'hadoop.*streaming.*\.jar$' || true)
-  if [[ -n "$candidate" ]]; then
+  if [[ -n "$candidate" ]] && is_streaming_jar "$candidate"; then
     HADOOP_STREAMING_JAR="$candidate"
     return 0
   fi
 
-  for candidate in \
-    /usr/lib/hadoop-mapreduce/hadoop-streaming.jar \
-    /usr/lib/hadoop-mapreduce/hadoop-mapreduce-client-jobclient.jar \
-    /home/hadoop/contrib/streaming/hadoop-streaming.jar
-  do
-    if [[ -f "$candidate" ]]; then
+  for candidate in /usr/lib/hadoop-mapreduce/*streaming*.jar /home/hadoop/contrib/streaming/*streaming*.jar; do
+    if is_streaming_jar "$candidate"; then
       HADOOP_STREAMING_JAR="$candidate"
       return 0
     fi
@@ -109,10 +117,11 @@ resolve_mode() {
   if [[ "$RUNNER" == "hadoop" ]]; then
     if ! discover_hadoop_streaming_jar; then
       echo "ERROR: Hadoop streaming jar not found." >&2
-      echo "Set HADOOP_STREAMING_JAR or pass one via environment, for example:" >&2
-      echo "  export HADOOP_STREAMING_JAR=/path/to/hadoop-streaming.jar" >&2
+      echo "Set HADOOP_STREAMING_JAR to a valid *streaming*.jar path, for example:" >&2
+      echo "  export HADOOP_STREAMING_JAR=/usr/lib/hadoop-mapreduce/hadoop-streaming.jar" >&2
       exit 1
     fi
+    echo "using Hadoop streaming jar: $HADOOP_STREAMING_JAR"
     HADOOP_STREAMING_ARGS=(--hadoop-streaming-jar "$HADOOP_STREAMING_JAR")
 
     # MR jobs write to HDFS; Python post-processing scripts need local files.

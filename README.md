@@ -130,15 +130,19 @@ bash run_pipeline.sh \
 `Exception: no Hadoop streaming jar`
 
 - Cause: mrjob could not locate the streaming jar from cluster defaults.
-- Fix option 1: set the jar path explicitly in the shell:
+- Fix option 1: set a valid streaming jar explicitly in the shell:
 
 ```bash
 export HADOOP_STREAMING_JAR=/usr/lib/hadoop-mapreduce/hadoop-streaming.jar
 ```
 
-- Fix option 2: if your cluster stores it elsewhere, locate then export:
+- Fix option 2: if your cluster stores it elsewhere, locate then export a path that contains `streaming` in the filename:
 
 ```bash
 hadoop classpath --glob | tr ':' '\n' | grep -E 'hadoop.*streaming.*\.jar$'
+# fallback search if classpath output is empty:
+find /usr/lib/hadoop-mapreduce /home/hadoop -type f -name '*streaming*.jar' 2>/dev/null
 export HADOOP_STREAMING_JAR=/path/from/command/hadoop-streaming.jar
 ```
+
+- Do not use `hadoop-mapreduce-client-jobclient*.jar` as `HADOOP_STREAMING_JAR`; it fails with `ClassNotFoundException: -files`.
