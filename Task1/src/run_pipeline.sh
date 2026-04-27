@@ -1,35 +1,89 @@
 #!/usr/bin/env bash
 # Two-job mrjob pipeline: count stats -> score top-k -> build output.txt
-# Usage: ./run_pipeline.sh [--hadoop] [--input HDFS_PATH] [--output OUT_DIR]
-#   --hadoop        run on cluster instead of locally (default: local)
-#   --input PATH    HDFS or local input path (default: local dev shards)
-#   --output DIR    base directory for all intermediate and final output
-#                   local mode:  everything is written under this local dir
-#                   hadoop mode: MR outputs go to HDFS under this path;
-#                                meta.json and output.txt are written locally here
+# Usage:
+#   local : ./run_pipeline.sh [--input LOCAL_FILE] [--output LOCAL_OUT_DIR]
+#   hadoop: ./run_pipeline.sh --hadoop --input HDFS_PATH [--output HDFS_OUT_DIR] [--local-output LOCAL_OUT_DIR]
+#   --hadoop               run on cluster instead of locally (default: local)
+#   --input PATH           input path (required in hadoop mode)
+#   --output DIR           local mode: local output dir (default: out)
+#                          hadoop mode: HDFS output base dir (default: /user/$(whoami)/task1_out)
+#   --local-output DIR     hadoop mode: local dir for meta.json and output.txt (default: ~/task1_out)
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOCAL_WORK=""   # set in resolve_mode for hadoop runs; used by cleanup
+HADOOP_STREAMING_JAR="${HADOOP_STREAMING_JAR:-}"
+
+to_hdfs_uri() {
+  local path="$1"
+  if [[ "$path" == hdfs://* ]]; then
+    printf '%s\n' "$path"
+  elif [[ "$path" == /* ]]; then
+    printf 'hdfs://%s\n' "$path"
+  else
+    printf '%s\n' "$path"
+  fi
+}
+
+discover_hadoop_streaming_jar() {
+  if [[ -n "${HADOOP_STREAMING_JAR:-}" ]]; then
+    return 0
+  fi
+
+  local cp candidate
+  cp=$(hadoop classpath --glob 2>/dev/null || true)
+  candidate=$(printf '%s' "$cp" | tr ':' '\n' | grep -m1 -E 'hadoop.*streaming.*\.jar$' || true)
+  if [[ -n "$candidate" ]]; then
+    HADOOP_STREAMING_JAR="$candidate"
+    return 0
+  fi
+
+  for candidate in \
+    /usr/lib/hadoop-mapreduce/hadoop-streaming.jar \
+    /usr/lib/hadoop-mapreduce/hadoop-mapreduce-client-jobclient.jar \
+    /home/hadoop/contrib/streaming/hadoop-streaming.jar
+  do
+    if [[ -f "$candidate" ]]; then
+      HADOOP_STREAMING_JAR="$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
 
 parse_args() {
   RUNNER="local"
   INPUT=""
-  OUTDIR="out"
+  OUTDIR=""
+  LOCAL_OUTPUT=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --hadoop)  RUNNER="hadoop" ;;
       --input)   INPUT="$2";  shift ;;
       --output)  OUTDIR="$2"; shift ;;
+      --local-output) LOCAL_OUTPUT="$2"; shift ;;
       *) echo "unknown arg: $1" >&2; exit 1 ;;
     esac
     shift
   done
-  COUNTS_DIR="$OUTDIR/counts"
-  META_FILE="$OUTDIR/meta.json"
-  RANKED_DIR="$OUTDIR/ranked_terms"
-  OUTPUT_FILE="$OUTDIR/output.txt"
+
+  if [[ "$RUNNER" == "hadoop" ]]; then
+    HDFS_OUT_BASE_RAW="${OUTDIR:-/user/$(whoami)/task1_out}"
+    HDFS_OUT_BASE="$(to_hdfs_uri "$HDFS_OUT_BASE_RAW")"
+    LOCAL_OUT_BASE="${LOCAL_OUTPUT:-$HOME/task1_out}"
+    COUNTS_DIR="$HDFS_OUT_BASE/counts"
+    RANKED_DIR="$HDFS_OUT_BASE/ranked_terms"
+    META_FILE="$LOCAL_OUT_BASE/meta.json"
+    OUTPUT_FILE="$LOCAL_OUT_BASE/output.txt"
+  else
+    LOCAL_OUT_BASE="${OUTDIR:-out}"
+    COUNTS_DIR="$LOCAL_OUT_BASE/counts"
+    RANKED_DIR="$LOCAL_OUT_BASE/ranked_terms"
+    META_FILE="$LOCAL_OUT_BASE/meta.json"
+    OUTPUT_FILE="$LOCAL_OUT_BASE/output.txt"
+  fi
 }
 
 resolve_mode() {
@@ -41,18 +95,33 @@ resolve_mode() {
       "$SCRIPT_DIR/../requirements/Assets/reviews_devset.part_3.json"
       "$SCRIPT_DIR/../requirements/Assets/reviews_devset.part_4.json"
     )
-  else
+  elif [[ "$RUNNER" == "local" ]]; then
     # single file: works for both local overrides and the full HDFS dataset
     INPUT_ARGS=("$INPUT")
+  else
+    if [[ -z "$INPUT" ]]; then
+      echo "ERROR: --input is required in --hadoop mode" >&2
+      exit 1
+    fi
+    INPUT_ARGS=("$(to_hdfs_uri "$INPUT")")
   fi
 
   if [[ "$RUNNER" == "hadoop" ]]; then
+    if ! discover_hadoop_streaming_jar; then
+      echo "ERROR: Hadoop streaming jar not found." >&2
+      echo "Set HADOOP_STREAMING_JAR or pass one via environment, for example:" >&2
+      echo "  export HADOOP_STREAMING_JAR=/path/to/hadoop-streaming.jar" >&2
+      exit 1
+    fi
+    HADOOP_STREAMING_ARGS=(--hadoop-streaming-jar "$HADOOP_STREAMING_JAR")
+
     # MR jobs write to HDFS; Python post-processing scripts need local files.
     # Intermediate outputs are downloaded via hadoop fs -getmerge between stages.
     LOCAL_WORK=$(mktemp -d)
     LOCAL_COUNTS="$LOCAL_WORK/counts"
     LOCAL_RANKED="$LOCAL_WORK/ranked_terms"
   else
+    HADOOP_STREAMING_ARGS=()
     LOCAL_COUNTS="$COUNTS_DIR"
     LOCAL_RANKED="$RANKED_DIR"
   fi
@@ -60,7 +129,7 @@ resolve_mode() {
 
 cleanup() {
   echo "pipeline failed, cleaning up" >&2
-  [[ "$RUNNER" == "local" ]] && rm -rf "$OUTDIR"
+  [[ "$RUNNER" == "local" ]] && rm -rf "$LOCAL_OUT_BASE"
   [[ -n "$LOCAL_WORK" ]] && rm -rf "$LOCAL_WORK"
   exit 1
 }
@@ -92,11 +161,12 @@ hdfs_getmerge_to_local() {
 }
 
 run_pipeline() {
-  mkdir -p "$OUTDIR"
+  mkdir -p "$LOCAL_OUT_BASE"
 
   echo "=== stage 1: count stats (runner=$RUNNER) ==="
   if ! python3 "$SCRIPT_DIR/job_count_stats.py" \
       -r "$RUNNER" \
+      "${HADOOP_STREAMING_ARGS[@]}" \
       --files "$SCRIPT_DIR/common.py,$SCRIPT_DIR/settings.py,$SCRIPT_DIR/../requirements/Assets/stopwords.txt" \
       --output-dir "$COUNTS_DIR" \
       "${INPUT_ARGS[@]}"; then
@@ -127,6 +197,7 @@ run_pipeline() {
   echo "=== stage 2: score top-k (runner=$RUNNER) ==="
   if ! python3 "$SCRIPT_DIR/job_score_topk.py" \
       -r "$RUNNER" \
+      "${HADOOP_STREAMING_ARGS[@]}" \
       --files "$SCRIPT_DIR/common.py,$SCRIPT_DIR/settings.py,$SCRIPT_DIR/../requirements/Assets/stopwords.txt" \
       --meta   "$META_FILE" \
       --output-dir "$RANKED_DIR" \

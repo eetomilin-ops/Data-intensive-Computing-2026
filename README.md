@@ -59,8 +59,9 @@ report.pdf
 cd src
 bash run_pipeline.sh \
   --hadoop \
-  --input /dic_shared/amazon-reviews/full/reviewscombined.json \
-  --output /user/$(whoami)/task1_out
+  --input hdfs:///dic_shared/amazon-reviews/full/reviewscombined.json \
+  --output hdfs:///user/$(whoami)/task1_out \
+  --local-output ~/task1_out
 ```
 
 **What the script does internally:**
@@ -68,12 +69,12 @@ bash run_pipeline.sh \
 | Step | Action |
 |------|--------|
 | Stage 1 | `CountStatsJob` MapReduce — reads the single HDFS input file, emits N / Nc / Nt / Ntc counts to HDFS `task1_out/counts` |
-| Stage 1.5 | `hadoop fs -getmerge` downloads counts to a local temp dir; extracts N and Nc into `task1_out/meta.json` locally |
+| Stage 1.5 | `hadoop fs -getmerge` downloads counts to a local temp dir; extracts N and Nc into local `~/task1_out/meta.json` |
 | Stage 2 | `ScoreTopKJob` MapReduce — reads HDFS counts, scores chi-square, keeps top-75 heap per category, writes to HDFS `task1_out/ranked_terms` |
 | Stage 2.5 | `hadoop fs -getmerge` downloads ranked terms locally |
-| Stage 3 | `build_output.py` runs locally — formats and writes `task1_out/output.txt` |
+| Stage 3 | `build_output.py` runs locally — formats and writes `~/task1_out/output.txt` |
 
-After a successful run, `output.txt` is written to `task1_out/output.txt` on the **local filesystem** of the JupyterLab node.
+After a successful run, `output.txt` is written to `~/task1_out/output.txt` on the local filesystem of the JupyterLab node.
 
 ### Run on the development shard (local mrjob, no Hadoop)
 
@@ -93,12 +94,51 @@ Use this for a quick end-to-end cluster smoke run:
 ```bash
 bash run_pipeline.sh \
   --hadoop \
-  --input /dic_shared/amazon-reviews/full/reviews_devset.json \
-  --output /user/$(whoami)/task1_dev_out
+  --input hdfs:///dic_shared/amazon-reviews/full/reviews_devset.json \
+  --output hdfs:///user/$(whoami)/task1_dev_out \
+  --local-output ~/task1_dev_out
 ```
 
 ### Notes
 
-- The `--output` path is used as both the HDFS base directory (for MR job outputs) and the local directory (for `meta.json` and `output.txt`). Keep it consistent.
+- In `--hadoop` mode, `--output` is the HDFS base directory and `--local-output` is the local directory for `meta.json` and `output.txt`.
+- If `--local-output` is omitted, the default is `~/task1_out`.
+- The script normalizes absolute HDFS paths, but using explicit `hdfs:///...` paths is recommended.
 - The HDFS full dataset path is hardcoded in `src/settings.py` as `FULL_DATASET_HDFS_PATH` for reference, but the script always uses the value passed via `--input`.
 - If the cluster HDFS already has output from a previous run at the same path, mrjob will fail. Remove old output first: `hadoop fs -rm -r /user/$(whoami)/task1_out`.
+
+### Troubleshooting on cluster
+
+`mkdir: cannot create directory '/user': Permission denied`
+
+- Cause: trying to create an HDFS path on the local filesystem.
+- Fix: use `--output` for HDFS and `--local-output` for local files. Example:
+
+```bash
+bash run_pipeline.sh \
+  --hadoop \
+  --input hdfs:///dic_shared/amazon-reviews/full/reviewscombined.json \
+  --output hdfs:///user/$(whoami)/task1_out \
+  --local-output ~/task1_out
+```
+
+`OSError: Input path ... does not exist!`
+
+- Cause: mrjob interpreted the input path as non-HDFS path.
+- Fix: pass an HDFS URI (`hdfs:///...`) or an absolute HDFS path.
+
+`Exception: no Hadoop streaming jar`
+
+- Cause: mrjob could not locate the streaming jar from cluster defaults.
+- Fix option 1: set the jar path explicitly in the shell:
+
+```bash
+export HADOOP_STREAMING_JAR=/usr/lib/hadoop-mapreduce/hadoop-streaming.jar
+```
+
+- Fix option 2: if your cluster stores it elsewhere, locate then export:
+
+```bash
+hadoop classpath --glob | tr ':' '\n' | grep -E 'hadoop.*streaming.*\.jar$'
+export HADOOP_STREAMING_JAR=/path/from/command/hadoop-streaming.jar
+```
