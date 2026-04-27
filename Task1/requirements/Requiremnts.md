@@ -114,3 +114,13 @@ Load stopwords and compile the tokenizer once per mapper process.
 Avoid unnecessary extra MapReduce stages.
 Avoid avoidable Python object churn inside the tight loop.
 Use a bounded heap for top-75 selection instead of sorting large groups in memory.
+
+**req12** *requirements for project report*\
+filename = report.pdf , that contains a detailed report 
+report structure :  at least four sections:
+( Introduction
+,Problem Overview
+,Methodology and Approach
+Conclusions)
+Methodology and Approach section should have a figure illustrating strategy and pipeline in one figure (1 page maximum) figure should illustrate data flow clearly. Section should  clearly indicate the chosen <key,value> design (all input, intermediary, and output pairs)
+Overall report should not exceed more than 8 pages (A4 size).
