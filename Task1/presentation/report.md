@@ -15,9 +15,9 @@ Dataset scale (~56GB) _requires_ distributed computation. It will take significa
 Dataset is not clean. JSON parsing is fine, data itself confusing. There are definitely misspelled terms like :  accessorie, kitche, garde, supplie, faotd, apos, hea, quot; as well 'keyboard sleep' tokens like yhbvgyhnnkoongdrtcswwxxdghnnjuuhhhj.
 
 ## 2. Problem overview
-A large corpus of product reviews is provided in line‑delimited JSON format. Each record contains a `reviewText` field and a `category` field. \
+Input dataset is a large corpus of product reviews formatted in line‑delimited JSON. Each record contains a `reviewText` field and a `category` field. 
 The task is to:
-1. **Preprocess** text: tokenize into unigrams, remove stopwords and single‑character tokens, apply case folding.
+1. **Preprocess** text: tokenize into unigrams, filter out stopwords and single‑character tokens, apply case folding.
 2. **Compute chi‑square** values for each term–category pair using document‑presence counts (a term contributes at most once per review).
 3. **Rank** terms by descending chi‑square value within each category and retain the top 75.
 4. **Output** one line per category in alphabetical order, listing the top‑75 terms with their chi‑square scores, plus a final line containing the merged dictionary of all retained terms sorted alphabetically.
@@ -90,19 +90,17 @@ The metadata (`N` and `N_c`) is loaded in `reducer_init`, so every reducer has t
 
 ### 3.3 Implementation Details
 
-**Tokenisation:** A compiled regular expression based on `TOKEN_DELIMITER_PATTERN` (settings.py) splits text on whitespace, digits, and the specified punctuation characters (`compile_tokenizer()`, `filter_tokens()` in common.py).\
-**Stopword loading:** `load_stopwords()` in common.py reads `stopwords.txt` once per mapper process, called from `CountStatsJob.mapper_init()` in job_count_stats.py.\
-**Document parsing:** `safe_parse_review()` skips malformed JSON lines; `extract_required_fields()` validates that both `reviewText` and `category` fields are present (common.py).\
-**Term deduplication:** `unique_terms_for_document()` in common.py converts the filtered token list to a `set` before emission, enforcing document-presence semantics required for chi-square.\
-**Combiners:** Used heavily in `CountStatsJob` (job_count_stats.py) to merge local counts before the shuffle.\
-**Bounded heap:** `update_top_k()` in common.py maintains a min‑heap of size `k` (75), called inside `ScoreTopKJob.reducer()` in job_score_topk.py.\
-New entries are added only if their score is higher than the weakest entry, or if tied and lexicographically smaller. This avoids storing all terms per category in memory.\
-**Metadata extraction:** Between the two jobs, `extract_meta_counts()` and `write_meta_json()` in build_output.py extract `N` and `N_c` from the first-job output and write `meta.json`.\
-**Output assembly:** `read_ranked_terms()`, `format_category_line()`, `merge_dictionary()`, and `write_output()` in build_output.py collect ranked terms, format per-category lines, and append the merged dictionary.\
-**Hadoop integration:** Pipeline script detects the environment and uses `hadoop fs -getmerge` to retrieve HDFS output onto the local filesystem for the post‑processing with Python scripts (`hdfs_getmerge_to_local()`, `discover_hadoop_streaming_jar()` in run_pipeline.sh).\
-`HADOOP_STREAMING_JAR` is discovered automatically or can be supplied, it was problem on deployment somehow it doesn't pull automatically.
+**Tokenisation:** A compiled regular expression based on `TOKEN_DELIMITER_PATTERN` (`settings.py`) splits text on whitespace, digits, and the specified punctuation characters (*compile_tokenizer*, *filter_tokens* in `common.py`).\
+**Stopword loading:** *load_stopwords* in `common.py` reads `stopwords.txt` once per mapper process, called from *mapper_init* in `job_count_stats.py`.\
+**Document parsing:** *safe_parse_review* skips malformed JSON lines; *extract_required_fields* validates that both `reviewText` and `category` fields are present (`common.py`).\
+**Term deduplication:** *unique_terms_for_document* in `common.py` converts the filtered token list to a `set` before emission, enforcing document-presence semantics required for chi-square.\
+**Combiners:** Used in `CountStatsJob` (`job_count_stats.py`) to merge local counts before the shuffle, drastically reducing shuffle volume.\
+**Bounded heap:** *update_top_k* in `common.py` maintains a min‑heap of size 75, called inside *reducer* of `job_score_topk.py`. New entries are accepted only if their score exceeds the weakest, or ties with a lexicographically smaller term — avoiding storing all terms per category in memory.\
+**Metadata extraction:** Between the two jobs, *extract_meta_counts* and *write_meta_json* in `build_output.py` extract `N` and `N_c` from the first-job output and write `meta.json`.\
+**Output assembly:** *read_ranked_terms*, *format_category_line*, *merge_dictionary*, and *write_output* in `build_output.py` collect ranked terms, format per-category lines, and append the merged dictionary.\
+**Hadoop integration:** `run_pipeline.sh` uses `hadoop fs -getmerge` to retrieve HDFS output to the local filesystem between stages (*hdfs_getmerge_to_local*). The streaming jar is located automatically via *discover_hadoop_streaming_jar* or can be supplied via `HADOOP_STREAMING_JAR`.
 
-### 3.4 Pipeline Figure
+### 3.4 Pipeline
 
 ```mermaid
 flowchart TB
@@ -131,9 +129,71 @@ flowchart TB
     Ranked --> Build[build_output.py]
     Build --> Out[output.txt<br>top-75 terms per category<br>+ merged dictionary]
 ```
-Figure 1: Data flow and key‑value pairs across the two‑stage pipeline. Stage 1 emits tagged counts, while Stage 2 re‑keys by term, computes chi‑square, and retains the top‑75 terms per category using bounded heaps. Metadata (N, N_c) is broadcast via a local meta.json file.
+**Figure 1**: Data flow and key‑value pairs across two‑stage pipeline.
+
+Pipeline starts with **Count Statistics** stage (CountStatsJob). It loads raw review dataset (either locally or on HDFS) where each line is a JSON record containing reviewText and category.
+
+Mapper pre‑processes text compile_tokenizer(), splits the review into unigram tokens filter_tokens() removes stop‑words and single‑character tokens, and unique_terms_for_document() collapses duplicates so that each term appears at most once per review – enforcing document‑presence for chi‑square. The mapper then emits four kinds of tagged key‑value pairs: (N,) for total documents, (NC, category) for documents per category, (NT, term) for global document counts of a term, and (NTC, category, term) for per‑category document counts. A combiner locally sums these counts, drastically reducing the shuffle volume. Finally the reducer aggregates the partial sums and writes the final counts to the output directory.
+
+Metadata Extraction step (build_output.py) reads the count outputs and, using extract_meta_counts(), collects the total document count N and a dictionary N_c of per‑category document counts. These values are serialised into a compact meta.json file via write_meta_json(). This file is stored locally and passed as a broadcast resource to the next MapReduce job, so that every reducer in the scoring stage can access N and N_c without additional shuffling.
+
+The Scoring & Top‑k stage (ScoreTopKJob) processes the aggregated counts from the first job. Its mapper re‑keys the data by term: for a global term count it emits (term, (NT, None, count)), and for a per‑category term count it emits (term, (NTC, category, count)). This guarantees that all counts for the same term land in the same reducer. Each reducer’s reducer_init() loads meta.json to obtain N and N_c. In the reducer function, the term’s global count N_t is extracted from the NT value, and a dictionary of per‑category counts ntcs is built from the NTC values. For every category where the term appears, compute_chi_square(N, N_c[cat], N_t, N_tc) calculates the chi‑square score. The bounded heap routine update_top_k(heap[cat], score, term) retains only the top 75 terms per category, using a tie‑breaker that prefers lexicographically smaller terms. After all terms are processed, reducer_final() emits for each category a string of the form "term1:score1 term2:score2 ..." with terms sorted descending by score.
+
+Finally, the Output Assembly step (build_output.py) reads the ranked results via read_ranked_terms() and builds the final output.txt: format_category_line() writes each category line with its top 75 term‑score pairs, categories are sorted alphabetically, and merge_dictionary() collects all retained terms into a single sorted dictionary line. The complete pipeline is orchestrated by run_pipeline.sh, which handles local or HDFS paths, intermediate file downloads with hdfs getmerge in Hadoop mode, and ensures all stages execute in the correct order. The result is a single file containing the per‑category discriminative terms and the merged dictionary, computed in a single full‑data scan and a lightweight scoring pass.
 
 ## 4. Conclusions
 Implemented two‑job MapReduce solution successfully executes on LBD cluster. Pipeline minimizes shuffle volume and memory consumption by deduplicating terms per document, leveraging combiners, and using bounded heaps. Proposed design achieves required output format within ~ 20 min of execution time.
 
-As suggested in task local debugging was performed before uploading to cluster. The same scripts work unchanged on the Hadoop because of parameterized input paths and relative file references. 
+As suggested in task local debugging was performed before uploading to cluster. The same scripts work unchanged on the Hadoop due to parameterized input paths and relative file references. 
+
+## Appendix A: Call sequence and function reference
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Pipeline as run_pipeline.sh
+    participant Count as CountStatsJob
+    participant MetaExtract as build_output.py (meta)
+    participant Score as ScoreTopKJob
+    participant BuildFinal as build_output.py (output)
+
+    User->>Pipeline: main / parse_args / resolve_mode
+    Pipeline->>Count: execute job_count_stats.py
+    Count->>Count: mapper_init: load_stopwords(), compile_tokenizer()
+    Count->>Count: mapper: safe_parse_review(), extract_required_fields(), tokenize(), filter_tokens(), unique_terms_for_document()
+    Count->>Count: combiner / reducer: sum tagged counts (N, NC, NT, NTC)
+    Count-->>Pipeline: write counts to HDFS/local dir
+
+    Pipeline->>MetaExtract: run build_output.py --counts <dir> --meta meta.json
+    MetaExtract->>MetaExtract: extract_meta_counts() → {N, Nc}
+    MetaExtract->>MetaExtract: write_meta_json(meta, meta.json)
+    MetaExtract-->>Pipeline: meta.json ready
+
+    Pipeline->>Score: execute job_score_topk.py --meta meta.json <counts_dir>
+    Score->>Score: reducer_init: load meta.json → N, Nc
+    Score->>Score: mapper: re-key counts by term (NT and NTC)
+    Score->>Score: reducer: compute_chi_square(), update_top_k()
+    Score->>Score: reducer_final: emit category → ranked terms string
+    Score-->>Pipeline: write ranked terms to HDFS/local dir
+
+    Pipeline->>BuildFinal: run build_output.py --ranked <dir> --output output.txt
+    BuildFinal->>BuildFinal: read_ranked_terms() → category_topk dict
+    BuildFinal->>BuildFinal: format_category_line(), merge_dictionary()
+    BuildFinal->>BuildFinal: write_output() → output.txt
+    BuildFinal-->>Pipeline: output.txt created
+
+    Pipeline->>User: done → output.txt
+```
+
+| Block | Functions | Implemented in |
+|---|---|---|
+| Configuration | `TARGET_PLATFORM`, `TOP_K_TERMS`, `TOKEN_DELIMITER_PATTERN`, `DEFAULT_*` constants | `settings.py` |
+| Orchestration | *main*, *parse_args*, *resolve_mode*, *run_pipeline*, *discover_hadoop_streaming_jar*, *hdfs_getmerge_to_local* | `run_pipeline.sh`, `build_output.py` |
+| Input parsing | *safe_parse_review*, *extract_required_fields* | `common.py` |
+| Text normalisation | *load_stopwords*, *compile_tokenizer*, *tokenize*, *filter_tokens* | `common.py` |
+| Document feature builder | *unique_terms_for_document* | `common.py` |
+| Count statistics job | *CountStatsJob.mapper_init*, *mapper*, *combiner*, *reducer* | `job_count_stats.py` |
+| Metadata extraction | *extract_meta_counts*, *write_meta_json* | `build_output.py` |
+| Score and top-k job | *compute_chi_square*, *update_top_k*, *ScoreTopKJob.mapper*, *reducer_init*, *reducer*, *reducer_final* | `common.py`, `job_score_topk.py` |
+| Output builder | *read_ranked_terms*, *format_category_line*, *merge_dictionary*, *write_output* | `build_output.py` |
+| Local debug harness | *test_smoke_local* | `run_local_debug.sh`, `tests/test_smoke_local.py` |
