@@ -90,11 +90,13 @@ The metadata (`N` and `N_c`) is loaded in `reducer_init`, so every reducer has t
 
 ### 3.3 Implementation Details
 
-- **Tokenisation:** A compiled regular expression based on `TOKEN_DELIMITER_PATTERN` splits text on whitespace, digits, and the specified punctuation characters.
-- **Stopword loading:** `common.py` loads `stopwords.txt` once per mapper process.
-- **Combiners:** Used heavily in Job 1 to merge local counts before the shuffle.
-- **Bounded heap:** `update_top_k()` in `common.py` maintains a min‑heap of size `k` (75). New entries are added only if their score is higher than the weakest entry, or if tied and lexicographically smaller. This avoids storing all terms per category in memory.
-- **Hadoop integration:** The pipeline script detects the environment and uses `hadoop fs -getmerge` to retrieve HDFS output onto the local filesystem for the post‑processing Python scripts. The `HADOOP_STREAMING_JAR` is discovered automatically or can be supplied.
+**Tokenisation:** A compiled regular expression based on `TOKEN_DELIMITER_PATTERN` splits text on whitespace, digits, and the specified punctuation characters.\
+**Stopword loading:** `common.py` loads `stopwords.txt` once per mapper process.\
+**Combiners:** Used heavily in Job 1 to merge local counts before the shuffle.\
+**Bounded heap:** `update_top_k()` in `common.py` maintains a min‑heap of size `k` (75).\
+New entries are added only if their score is higher than the weakest entry, or if tied and lexicographically smaller. This avoids storing all terms per category in memory.\
+**Hadoop integration:** Pipeline script detects the environment and uses `hadoop fs -getmerge` to retrieve HDFS output onto the local filesystem for the post‑processing with Python scripts.\
+`HADOOP_STREAMING_JAR` is discovered automatically or can be supplied, it was problem on deployment somehow it doesn't pull automatically.
 
 ### 3.4 Pipeline Figure
 
@@ -128,6 +130,21 @@ flowchart TB
 Figure 1: Data flow and key‑value pairs across the two‑stage pipeline. Stage 1 emits tagged counts, while Stage 2 re‑keys by term, computes chi‑square, and retains the top‑75 terms per category using bounded heaps. Metadata (N, N_c) is broadcast via a local meta.json file.
 
 ## 4. Conclusions
-The implemented two‑job MapReduce solution successfully computes the chi‑square statistic for all unigram terms across 22 product categories on both the development and the full Amazon Reviews dataset. By deduplicating terms per document, leveraging combiners, and using bounded heaps, the pipeline minimises shuffle volume and memory consumption. The design achieves the required output format: one category line with the top 75 terms, plus a merged dictionary.
+Implemented two‑job MapReduce solution successfully executes on LBD cluster. Pipeline minimizes shuffle volume and memory consumption by deduplicating terms per document, leveraging combiners, and using bounded heaps. Proposed design achieves required output format within ~ 20 min of execution time.
 
-Local debugging was performed using the provided dev shards, and the same scripts work unchanged on the Hadoop cluster, meeting the requirement of parameterised input paths and relative file references. The architecture prioritises speed and is expected to run within the target time window on the cluster. All code is documented, and the choice of key‑value pairs is clearly justified.
+As suggested in task local debugging was performed before uploading to cluster. The same scripts work unchanged on the Hadoop because of parameterized input paths and relative file references. 
+
+
+```mermaid
+flowchart LR
+    A[Input: JSON reviews] --> B[Preprocess & Tokenize]
+    B --> C[CountStatsJob Mapper / Combiner / Reducer]
+    C --> D[Counts Output]
+    D --> E[extract_meta_counts<br/>meta.json]
+    D --> F[ScoreTopKJob Mapper<br/>re-key by term]
+    E --> G[Reducer Init<br/>load meta.json]
+    F --> H[Reducer<br/>compute chi2, update top-k heap]
+    G --> H
+    H --> I[Reducer Final<br/>emit per category ranked terms]
+    I --> J[build_output.py<br/>output.txt]
+```
