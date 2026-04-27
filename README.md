@@ -8,7 +8,7 @@ learning repo for TU [194.048-2026S]
 
 ---
 
-## Task 1 — Cluster deployment and run guide
+## Task 1 — Cluster deployment
 
 ### Prerequisites
 
