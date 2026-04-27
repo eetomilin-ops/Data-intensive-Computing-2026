@@ -103,9 +103,17 @@ bash run_pipeline.sh \
 
 - In `--hadoop` mode, `--output` is the HDFS base directory and `--local-output` is the local directory for `meta.json` and `output.txt`.
 - If `--local-output` is omitted, the default is `~/task1_out`.
+- In `--hadoop` mode, `run_pipeline.sh` auto-detects a Hadoop streaming jar. On this cluster it should resolve to `/usr/lib/hadoop/tools/lib/hadoop-streaming-3.3.6.jar`, so manual export is usually not needed.
 - The script normalizes absolute HDFS paths, but using explicit `hdfs:///...` paths is recommended.
 - The HDFS full dataset path is hardcoded in `src/settings.py` as `FULL_DATASET_HDFS_PATH` for reference, but the script always uses the value passed via `--input`.
 - If the cluster HDFS already has output from a previous run at the same path, mrjob will fail. Remove old output first: `hadoop fs -rm -r /user/$(whoami)/task1_out`.
+
+### Interpreting cluster run logs
+
+- `uploading working dir files to hdfs:///user/.../tmp/mrjob/.../files/wd...` uploads only the job code and small dependency files needed by tasks. It does not upload the full reviews dataset.
+- `Total input files to process : 1` and `number of splits:435` means Hadoop split the single large input file into many mapper chunks.
+- `map 0% ... map 4%` at the beginning is normal startup and warm-up for a large job. Full-dataset runs can take a while even on cluster.
+- `running in uber mode : false` is expected for this workload. Uber mode runs very small jobs inside the application master; large jobs are distributed across the cluster, which is what you want here.
 
 ### Troubleshooting on cluster
 
@@ -133,7 +141,7 @@ bash run_pipeline.sh \
 - Fix option 1: set a valid streaming jar explicitly in the shell:
 
 ```bash
-export HADOOP_STREAMING_JAR=/usr/lib/hadoop-mapreduce/hadoop-streaming.jar
+export HADOOP_STREAMING_JAR=/usr/lib/hadoop/tools/lib/hadoop-streaming-3.3.6.jar
 ```
 
 - Fix option 2: if your cluster stores it elsewhere, locate then export a path that contains `streaming` in the filename:

@@ -51,7 +51,16 @@ discover_hadoop_streaming_jar() {
     return 0
   fi
 
-  for candidate in /usr/lib/hadoop-mapreduce/*streaming*.jar /home/hadoop/contrib/streaming/*streaming*.jar; do
+  for candidate in \
+    /usr/lib/hadoop/tools/lib/hadoop-streaming-3.3.6.jar \
+    /usr/lib/hadoop/tools/lib/hadoop-streaming.jar \
+    /usr/lib/hadoop/tools/lib/*streaming*.jar \
+    /usr/lib/hadoop-mapreduce/*streaming*.jar \
+    /usr/lib/hadoop-mapreduce/lib/*streaming*.jar \
+    /usr/share/hadoop/tools/lib/*streaming*.jar \
+    /usr/share/hadoop/mapreduce/*streaming*.jar \
+    /home/hadoop/contrib/streaming/*streaming*.jar
+  do
     if is_streaming_jar "$candidate"; then
       HADOOP_STREAMING_JAR="$candidate"
       return 0
@@ -118,7 +127,7 @@ resolve_mode() {
     if ! discover_hadoop_streaming_jar; then
       echo "ERROR: Hadoop streaming jar not found." >&2
       echo "Set HADOOP_STREAMING_JAR to a valid *streaming*.jar path, for example:" >&2
-      echo "  export HADOOP_STREAMING_JAR=/usr/lib/hadoop-mapreduce/hadoop-streaming.jar" >&2
+      echo "  export HADOOP_STREAMING_JAR=/usr/lib/hadoop/tools/lib/hadoop-streaming-3.3.6.jar" >&2
       exit 1
     fi
     echo "using Hadoop streaming jar: $HADOOP_STREAMING_JAR"
