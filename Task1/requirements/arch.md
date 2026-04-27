@@ -24,7 +24,7 @@
 
 ## 2. Function call sequence
 
-Recommended execution order for both local debugging and cluster runs:
+Execution order for both local debugging and cluster runs:
 
 1. `main()`, `parse_args()`, `resolve_mode()`, and `run_pipeline()` in `run_pipeline.sh` select the runner and orchestrate the pipeline.
 2. `load_stopwords()` and `compile_tokenizer()` prepare immutable preprocessing state for the counting stage.
@@ -94,7 +94,7 @@ flowchart TD
 
 ## 3. Stack
 
-| Layer | Choice | Why this is minimal |
+| Layer | Choice | Reasoning |
 | --- | --- | --- |
 | Language | Python 3.x compatible with the cluster image | Matches mrjob and avoids any extra runtime dependency. |
 | Distributed execution | `mrjob` | Required by the course and sufficient for local plus Hadoop execution. |
@@ -132,37 +132,34 @@ Task1/                                       assignment root for code, docs, and
 
 ```
 
-## 5. Speed-first
-*Job 1* computes all counts in one raw-data pass, a tiny meta extractor builds `N` and `N_c`
-
-*Job 2* computes chi-square and top 75, local builder writes `output.txt`.
-
+## 5. Speed-first plan
+*Job 1* computes all counts in one raw-data pass, a tiny meta extractor builds `N` and `N_c`\
+*Job 2* computes chi-square and top 75, local builder writes `output.txt`.\
 It is the best tradeoff for this assignment which minimizes full-dataset scans, keeps dependencies minimal, remains debuggable locally, and avoids overly clever mrjob internals that are risky on a shared Hadoop cluster.
 
 ## 6. Architectural decision records
 
+Only accepted listed. Options were discarded for short.
+
 ### ADR-001: Choose a two-job pipeline
 
-- Status: Accepted
 - Context: The target environment is a shared public Hadoop cluster, and speed is the primary quality attribute.
 - Decision: Use one counting job over raw reviews, then one scoring job over aggregated counts, with a small local metadata extraction step between them.
 - Consequences: Only one full raw-data scan is required, cluster runtime is reduced, and the design stays understandable enough for local debugging.
 
 ### ADR-002: Count document presence, not term frequency
 
-- Status: Accepted
 - Context: The assignment defines chi-square on a document-per-category basis.
 - Decision: Deduplicate terms within each review before any term counts are emitted.
 - Consequences: The statistics match the required semantics, and shuffle volume is reduced because repeated tokens within a review are collapsed early.
 
 ### ADR-003: Use only mrjob plus Python standard library
 
-- Status: Accepted
 - Context: Final grading runs from the submitted archive on infrastructure where extra dependencies must not be assumed.
 - Decision: Restrict the implementation stack to Python, mrjob, bash, and standard library modules.
 - Consequences: Packaging is simpler, deployment risk is lower, and local debugging remains close to cluster behavior.
 
-## 7. Local debugging strategy
+## 7. Local debugging pipe
 
 - Run the exact same two-job pipeline locally with `-r local` before any Hadoop execution.
 - Use the provided split dev files as the default smoke-test input set.

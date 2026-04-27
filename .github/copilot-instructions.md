@@ -1,4 +1,4 @@
-# Project Guidelines
+# Project guidelines
 
 ## Scope
 These instructions apply to the whole workspace.
@@ -14,7 +14,7 @@ These instructions apply to the whole workspace.
 - Use `src/settings.py` as the single source for shared constants such as paths, counters, tokenization rules, and defaults.
 - Preserve the planned file layout under `Task1/src/` unless a task explicitly requires changing it.
 
-## Task 1 Rules
+## Task 1 rules
 - Implement chi-square feature selection with document-presence semantics, not raw term-frequency semantics.
 - Deduplicate terms per review document before emitting term counts.
 - Keep the final output format exact: one alphabetical category line with top 75 terms per category, plus one merged alphabetical dictionary line.
@@ -25,7 +25,7 @@ These instructions apply to the whole workspace.
 - Prefer Python standard library plus `mrjob` only.
 - Do not introduce `pandas`, `numpy`, `scipy`, Spark, or heavyweight text-processing libraries unless explicitly requested.
 
-## Code Style
+## Code style
 - Use instructions in .github/AI code gen ruleset.md
 - When sketching or stubbing typed Python functions, use the multiline signature-comment template from the ruleset instead of placeholder docstrings.
 - For those typed function blocks, keep the function summary comment above the block and keep only aligned inline comments on arguments and return values.
