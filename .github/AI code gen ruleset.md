@@ -1,11 +1,14 @@
-# Code Style Ruleset
+# Code style ruleset
 
 ## Goal
 Produce code that resembles typical human-written software rather than AI-generated output. Avoid patterns that signal templated, overly generic, or instructional code.
----
-## DOs
 
-### 1. Write Purposeful, Non-Obvious Comments
+### Heading style
+Use sentence case for markdown headings and comment titles. Capitalize only the first word and proper nouns.
+---
+## Dos
+
+### 1. Write purposeful, non-obvious comments
 Comment **why**, not **what**. Focus on intent, trade-offs, constraints, or edge cases.
 Good sample
 ```
@@ -13,10 +16,10 @@ Good sample
 if base == 0: return None
 ```
 
-### 2. Use Inconsistent (Natural) Comment Density
+### 2. Use inconsistent (natural) comment density
 Comment only where needed. Leave some obvious lines uncommented.
 
-### 3. Reflect Real-World Constraints
+### 3. Reflect real-world constraints
 Add domain-specific handling instead of generic fallbacks. Encode assumptions explicitly.
 
 Good sample
@@ -25,7 +28,7 @@ Good sample
 if value > 100: raise ValueError("Unexpected scale")
 ```
 
-### 4. Vary Function and Variable Naming
+### 4. Vary function and variable naming
 Mix concise and descriptive names.Avoid overly systematic naming patterns.
 
 Good sample
@@ -35,14 +38,14 @@ clean_val()
 normalizeBaseline()
 ```
 
-### 5. Allow Minor Imperfections
+### 5. Allow minor imperfections
 Small asymmetries in structure are acceptable.Humans rarely write perfectly uniform code.
 
-### 6. Use Context-Specific Error Handling
+### 6. Use context-specific error handling
 Tailor logic to expected data issues. Avoid generic “catch-all” patterns.
 Avoid guards where possible. Fail fast. Aim for speed.
 
-### 7. Write Selective Docstrings
+### 7. Write selective docstrings
 Avoid general docstrings, use only for non-trivial functions. Include edge cases or assumptions if relevant.
 Use common comments for outher cases. 
 
@@ -52,7 +55,7 @@ def normalize(series):
     """Normalize relative to first valid entry; assumes sorted input."""
 ````
 
-### 8. Use Signature Comments for Function Specs
+### 8. Use signature comments for function specs
 For planned or stubbed typed functions, use a short comment above the function and inline comments for arguments and return value.
 Align all inline comments in that signature block to the longest pre-comment signature line plus 4 spaces.
 
@@ -64,7 +67,7 @@ def load_stopwords(
 ) -> set[str]:                    # lookup used during token filtering
 ```
 
-### 9. Separate Block and Expression Comments
+### 9. Separate block and expression comments
 Use inline comments for expressions only, after 4 spaces.
 Use a short comment above code blocks such as functions, loops, try blocks, and condition groups.
 When several inline comments appear in one block, align them to the longest expression where practical.
@@ -79,10 +82,10 @@ for key in items:
     wider_name = c + d     # second partial score
 ```
 
-### 10. Mix Coding Styles Slightly
+### 10. Mix coding styles slightly
 Minor variation in formatting or structure is acceptable. Avoid rigid, repeated templates.
 
-### 12. Use Impersonal Voice in Comments
+### 12. Use impersonal voice in comments
 Avoid first-person pronouns such as "we", "I", or "our" in comments. Use indirect or passive constructions instead.
 
 Good
@@ -94,7 +97,7 @@ Bad
 # one heap per category, filled as we process each term group
 ```
 
-### 11. Use Compact Single-Line Guards
+### 11. Use compact single-line guards
 Write single-statement conditionals on one line. No blank line before or after guard blocks.
 
 Good
@@ -113,49 +116,49 @@ if denom == 0:
 
 ---
 
-## DON'Ts
-1. Do Not Explain Obvious Code . Avoid comments that restate the code.
+## Don'ts
+1. Do not explain obvious code. Avoid comments that restate the code.
 Bad sample
 ```
 # Create a list of columns
 cols = list(df.columns)
 ```
 
-### 2. Do Not Use Template-Like Docstrings Everywhere
+### 2. Do not use template-like docstrings everywhere
 Avoid uniform phrasing across all functions. Do not describe trivial behavior.
 Bad sample 
 ```
 """Convert input to float or return None."""
 ```
-### 3. Avoid Canonical AI Pipelines
+### 3. Avoid canonical AI pipelines
 Repetitive patterns like: strip → convert → coerce → fallback . Generic “safe” conversions without context .
 Bad sample 
 ```
 pd.to_numeric(str(x).strip(), errors="coerce")
 ```
-### 4. Avoid Overly Defensive Generic Logic
+### 4. Avoid overly defensive generic logic
 Do not handle every possible case identically. Avoid “universal” fallback outputs like None or NaN without reasoning. Fail fast. Aim for speed and readability.
 
-### 5. Do Not Narrate Code Usage
+### 5. Do not narrate code usage
 Avoid describing where or how code is used externally.
 Bad sample
 ```
 # This function is applied during CSV loading
 ```
 
-### 6. Avoid Excessive Uniformity
+### 6. Avoid excessive uniformity
 Do not keep identical structure across all functions.
 Avoid repeated patterns in: docstrings, comments, naming
 
-### 7. Avoid Over-Clean Mathematical Formulations (weak)
+### 7. Avoid over-clean mathematical formulations (weak)
 Real code often includes intermediate variables or checks. Avoid overly “perfect” one-liners for complex logic. Avoid extra variables where possible.
 Bad
 return ((s / base) * 100).round(2)
 
-### 8. Do Not Over-Document Simple Helpers
+### 8. Do not over-document simple helpers
 Small utility functions typically have minimal or no documentation.
 
-### 9. Optimize for readability .
+### 9. Optimize for readability.
 Do not make uber one liners. Expression length is 60-100 symbols max. Do not add extra CRLF, make code compact. 
 
 ## Checklist
