@@ -66,7 +66,7 @@ The MapReduce stages use carefully crafted keys and values to enable efficient g
 
 #### Stage 1: Count Statistics
 
-| Step          | Key                                     | Value   | Explanation                                                                 |
+| Step          | Key                                     | Value   | Description                                                                 |
 |---------------|-----------------------------------------|---------|-----------------------------------------------------------------------------|
 | **Map**       | `("N",)`                                | 1       | Counts each document once.                                                  |
 |               | `("NC", category)`                      | 1       | Counts a document for its category.                                         |
@@ -125,3 +125,9 @@ flowchart TB
     Ranked --> Build[build_output.py]
     Build --> Out[output.txt<br>top-75 terms per category<br>+ merged dictionary]
 ```
+Figure 1: Data flow and key‑value pairs across the two‑stage pipeline. Stage 1 emits tagged counts, while Stage 2 re‑keys by term, computes chi‑square, and retains the top‑75 terms per category using bounded heaps. Metadata (N, N_c) is broadcast via a local meta.json file.
+
+## 4. Conclusions
+The implemented two‑job MapReduce solution successfully computes the chi‑square statistic for all unigram terms across 22 product categories on both the development and the full Amazon Reviews dataset. By deduplicating terms per document, leveraging combiners, and using bounded heaps, the pipeline minimises shuffle volume and memory consumption. The design achieves the required output format: one category line with the top 75 terms, plus a merged dictionary.
+
+Local debugging was performed using the provided dev shards, and the same scripts work unchanged on the Hadoop cluster, meeting the requirement of parameterised input paths and relative file references. The architecture prioritises speed and is expected to run within the target time window on the cluster. All code is documented, and the choice of key‑value pairs is clearly justified.
