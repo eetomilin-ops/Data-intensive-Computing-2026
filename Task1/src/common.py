@@ -47,10 +47,33 @@ def compute_chi_square(N: int, Nc: int, Nt: int, Ntc: int) -> float:
     if denom == 0: return 0.0
     return N * (A * D - B * C) ** 2 / denom
 
-# min-heap bounded to k: push candidate, evict the weakest when over limit
+# min-heap bounded to k with closed-predicate tie-break:
+#   accept if score strictly higher than the weakest in the heap
+#   accept if score ties and term is alphabetically smaller than the weakest (=> evict the larger term)
+#   reject by default (including ties where the new term is not smaller)
 def update_top_k(heap: list, score: float, term: str, k: int = TOP_K_TERMS) -> None:
-    heapq.heappush(heap, (score, term))
-    if len(heap) > k: heapq.heappop(heap)
+    if len(heap) < k:
+        heapq.heappush(heap, (score, term))
+    else:
+        # find the weakest candidate: lowest score, or at equal score the lexicographically largest term
+        weakest_score, weakest_term = heap[0]
+        for cur_score, cur_term in heap[1:]:
+            if cur_score < weakest_score:
+                weakest_score, weakest_term = cur_score, cur_term
+            elif cur_score == weakest_score and cur_term > weakest_term:
+                weakest_score, weakest_term = cur_score, cur_term
+
+        if score > weakest_score:
+            should_accept = True
+        elif score == weakest_score and term < weakest_term:
+            should_accept = True
+        else:
+            should_accept = False
+
+        if should_accept:
+            heap.remove((weakest_score, weakest_term))
+            heapq.heapify(heap)
+            heapq.heappush(heap, (score, term))
 
 def format_term_score(term: str, score: float) -> str:
     return f"{term}:{score:.4f}"

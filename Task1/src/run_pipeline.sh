@@ -4,10 +4,14 @@
 #   --hadoop        run on cluster instead of locally (default: local)
 #   --input PATH    HDFS or local input path (default: local dev shards)
 #   --output DIR    base directory for all intermediate and final output
+#                   local mode:  everything is written under this local dir
+#                   hadoop mode: MR outputs go to HDFS under this path;
+#                                meta.json and output.txt are written locally here
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOCAL_WORK=""   # set in resolve_mode for hadoop runs; used by cleanup
 
 parse_args() {
   RUNNER="local"
@@ -38,15 +42,33 @@ resolve_mode() {
       "$SCRIPT_DIR/../requirements/Assets/reviews_devset.part_4.json"
     )
   else
+    # single file: works for both local overrides and the full HDFS dataset
     INPUT_ARGS=("$INPUT")
+  fi
+
+  if [[ "$RUNNER" == "hadoop" ]]; then
+    # MR jobs write to HDFS; Python post-processing scripts need local files.
+    # Intermediate outputs are downloaded via hadoop fs -getmerge between stages.
+    LOCAL_WORK=$(mktemp -d)
+    LOCAL_COUNTS="$LOCAL_WORK/counts"
+    LOCAL_RANKED="$LOCAL_WORK/ranked_terms"
+  else
+    LOCAL_COUNTS="$COUNTS_DIR"
+    LOCAL_RANKED="$RANKED_DIR"
   fi
 }
 
-# abort and clean up on any stage failure so stale partial output never survives
-trap 'echo "pipeline failed at line $LINENO, removing $OUTDIR"; rm -rf "$OUTDIR"; exit 1' ERR
+cleanup() {
+  echo "pipeline failed, cleaning up" >&2
+  [[ "$RUNNER" == "local" ]] && rm -rf "$OUTDIR"
+  [[ -n "$LOCAL_WORK" ]] && rm -rf "$LOCAL_WORK"
+  exit 1
+}
 
-# mrjob can exit 0 while producing no output (empty input, silent internal error);
-# check that at least one part file exists before trusting a stage completed
+# abort and clean up on any stage failure so stale partial output never survives
+trap 'cleanup' ERR
+
+# local mode: check that at least one part file exists before trusting a stage completed
 check_parts() {
   local dir="$1" label="$2"
   local count
@@ -57,7 +79,21 @@ check_parts() {
   fi
 }
 
+# hadoop mode: merge HDFS part files into a single local file for Python scripts
+hdfs_getmerge_to_local() {
+  local hdfs_dir="$1" local_dir="$2" label="$3"
+  mkdir -p "$local_dir"
+  echo "  downloading $label from HDFS ($hdfs_dir) ..."
+  hadoop fs -getmerge "$hdfs_dir" "$local_dir/part-00000"
+  if [[ ! -s "$local_dir/part-00000" ]]; then
+    echo "ERROR: $label HDFS getmerge produced an empty file from $hdfs_dir" >&2
+    exit 1
+  fi
+}
+
 run_pipeline() {
+  mkdir -p "$OUTDIR"
+
   echo "=== stage 1: count stats (runner=$RUNNER) ==="
   if ! python3 "$SCRIPT_DIR/job_count_stats.py" \
       -r "$RUNNER" \
@@ -67,11 +103,16 @@ run_pipeline() {
     echo "ERROR: stage 1 exited non-zero" >&2
     exit 1
   fi
-  check_parts "$COUNTS_DIR" "stage 1"
+
+  if [[ "$RUNNER" == "hadoop" ]]; then
+    hdfs_getmerge_to_local "$COUNTS_DIR" "$LOCAL_COUNTS" "counts"
+  else
+    check_parts "$COUNTS_DIR" "stage 1"
+  fi
 
   echo "=== stage 1.5: extract meta ==="
   if ! python3 "$SCRIPT_DIR/build_output.py" \
-      --counts "$COUNTS_DIR" \
+      --counts "$LOCAL_COUNTS" \
       --ranked /dev/null \
       --meta   "$META_FILE" \
       --output /dev/null; then
@@ -93,12 +134,17 @@ run_pipeline() {
     echo "ERROR: stage 2 exited non-zero" >&2
     exit 1
   fi
-  check_parts "$RANKED_DIR" "stage 2"
+
+  if [[ "$RUNNER" == "hadoop" ]]; then
+    hdfs_getmerge_to_local "$RANKED_DIR" "$LOCAL_RANKED" "ranked_terms"
+  else
+    check_parts "$RANKED_DIR" "stage 2"
+  fi
 
   echo "=== stage 3: build output.txt ==="
   if ! python3 "$SCRIPT_DIR/build_output.py" \
-      --counts "$COUNTS_DIR" \
-      --ranked "$RANKED_DIR" \
+      --counts "$LOCAL_COUNTS" \
+      --ranked "$LOCAL_RANKED" \
       --meta   "$META_FILE" \
       --output "$OUTPUT_FILE"; then
     echo "ERROR: stage 3 exited non-zero" >&2
@@ -110,6 +156,7 @@ run_pipeline() {
   fi
 
   echo "done -> $OUTPUT_FILE"
+  [[ -n "$LOCAL_WORK" ]] && rm -rf "$LOCAL_WORK"
 }
 
 main() {
