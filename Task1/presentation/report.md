@@ -6,13 +6,13 @@ target is PDF after css application to .md
 *Task 1: Chi-Square Term Selection Using MapReduce on Amazon Reviews*\
 Group 58: Tomilin Evgenii ,Sajan Sonu, Puthumana Kudiyirikkal Neeraj, Taikandi Mohammed Muhammed Musthaq, Krishnan Karun
 
-## 1. Intro
+## 1. Introduction
 
 Task focuses on high volume text processing using MapReduce applied to Amazon Reviews dataset. Objective is extraction of discriminative unigram features per product category using chi-square statistic.\
-Dataset scale (~56GB) _requires_ distributed computation. It will take significant time, e.g est. for my laptop is 7-9 hours. Implementation uses mrjob per task requirement and targets LBD Hadoop cluster.
+Dataset scale (~56GB) _requires_ distributed computation. It will take significant time, e.g est. for average laptop is 7-9 hours. Implementation uses mrjob per task requirement and targets LBD Hadoop cluster.
 
 ## 1.1 Observations
-Dataset is not clean. JSON parsing is fine, data itself confusing. There are definitely misspelled like :  accessorie, kitche, garde, supplie, faotd, apos, hea, quot; as well 'keyboard sleep' tokens like yhbvgyhnnkoongdrtcswwxxdghnnjuuhhhj.
+Dataset is not clean. JSON parsing is fine, data itself confusing. There are definitely misspelled terms like :  accessorie, kitche, garde, supplie, faotd, apos, hea, quot; as well 'keyboard sleep' tokens like yhbvgyhnnkoongdrtcswwxxdghnnjuuhhhj.
 
 ## 2. Problem overview
 A large corpus of product reviews is provided in line‑delimited JSON format. Each record contains a `reviewText` field and a `category` field. \
@@ -30,7 +30,7 @@ $$
 
 where \(N\) is total documents, \(A\) documents in the category containing the term, \(B\) documents not in the category containing the term, \(C\) documents in the category without the term, and \(D\) documents in neither.
 
-The challenge is to perform this computation efficiently on 142.8 million reviews (full dataset) using a two‑job MapReduce pipeline, keeping shuffle volumes low and using combiners to reduce intermediate data.
+**Challenge here** is to perform this computation *efficiently* on ~ 142.8 million reviews (full dataset) using a two‑job MapReduce pipeline, keeping shuffle volumes low and using combiners to reduce intermediate data.
 
 ## 3. Methodology and Approach
 
@@ -38,7 +38,7 @@ Our solution follows a two‑stage MapReduce pipeline, orchestrated by a shell s
 
 ### 3.1 Pipeline Overview
 
-The pipeline consists of three main steps:
+The pipeline consists of four main steps:
 
 1. **Count Statistics (Job 1 – `CountStatsJob`)**  
    Scans every review document and emits tagged counts:
@@ -50,7 +50,7 @@ The pipeline consists of three main steps:
    A combiner aggregates partial sums locally before the shuffle, drastically reducing network traffic.
 
 2. **Metadata Extraction (local script)**  
-   From the output of Job 1, a small Python script extracts `N` and all `N_c` values and writes them into a compact `meta.json` file. This file is passed to the next job as a broadcast resource.
+   From the output of Job 1, `extract_meta_counts()` and `write_meta_json()` in build_output.py extract `N` and all `N_c` values and write them into a compact `meta.json` file. This file is passed to the next job as a broadcast resource.
 
 3. **Scoring & Top‑k (Job 2 – `ScoreTopKJob`)**  
    Reads the output of Job 1 and the metadata file. Maps counts so that all data for a term (global `N_t` and per‑category `N_tc`) lands in the same reducer. Inside the reducer, chi‑square is computed for each category where the term appears. A bounded min‑heap (size 75) per category keeps only the top‑75 terms by score, using a tie‑breaking rule that favours lexicographically smaller terms at equal scores.
@@ -90,12 +90,16 @@ The metadata (`N` and `N_c`) is loaded in `reducer_init`, so every reducer has t
 
 ### 3.3 Implementation Details
 
-**Tokenisation:** A compiled regular expression based on `TOKEN_DELIMITER_PATTERN` splits text on whitespace, digits, and the specified punctuation characters.\
-**Stopword loading:** `common.py` loads `stopwords.txt` once per mapper process.\
-**Combiners:** Used heavily in Job 1 to merge local counts before the shuffle.\
-**Bounded heap:** `update_top_k()` in `common.py` maintains a min‑heap of size `k` (75).\
+**Tokenisation:** A compiled regular expression based on `TOKEN_DELIMITER_PATTERN` (settings.py) splits text on whitespace, digits, and the specified punctuation characters (`compile_tokenizer()`, `filter_tokens()` in common.py).\
+**Stopword loading:** `load_stopwords()` in common.py reads `stopwords.txt` once per mapper process, called from `CountStatsJob.mapper_init()` in job_count_stats.py.\
+**Document parsing:** `safe_parse_review()` skips malformed JSON lines; `extract_required_fields()` validates that both `reviewText` and `category` fields are present (common.py).\
+**Term deduplication:** `unique_terms_for_document()` in common.py converts the filtered token list to a `set` before emission, enforcing document-presence semantics required for chi-square.\
+**Combiners:** Used heavily in `CountStatsJob` (job_count_stats.py) to merge local counts before the shuffle.\
+**Bounded heap:** `update_top_k()` in common.py maintains a min‑heap of size `k` (75), called inside `ScoreTopKJob.reducer()` in job_score_topk.py.\
 New entries are added only if their score is higher than the weakest entry, or if tied and lexicographically smaller. This avoids storing all terms per category in memory.\
-**Hadoop integration:** Pipeline script detects the environment and uses `hadoop fs -getmerge` to retrieve HDFS output onto the local filesystem for the post‑processing with Python scripts.\
+**Metadata extraction:** Between the two jobs, `extract_meta_counts()` and `write_meta_json()` in build_output.py extract `N` and `N_c` from the first-job output and write `meta.json`.\
+**Output assembly:** `read_ranked_terms()`, `format_category_line()`, `merge_dictionary()`, and `write_output()` in build_output.py collect ranked terms, format per-category lines, and append the merged dictionary.\
+**Hadoop integration:** Pipeline script detects the environment and uses `hadoop fs -getmerge` to retrieve HDFS output onto the local filesystem for the post‑processing with Python scripts (`hdfs_getmerge_to_local()`, `discover_hadoop_streaming_jar()` in run_pipeline.sh).\
 `HADOOP_STREAMING_JAR` is discovered automatically or can be supplied, it was problem on deployment somehow it doesn't pull automatically.
 
 ### 3.4 Pipeline Figure
@@ -133,18 +137,3 @@ Figure 1: Data flow and key‑value pairs across the two‑stage pipeline. Stage
 Implemented two‑job MapReduce solution successfully executes on LBD cluster. Pipeline minimizes shuffle volume and memory consumption by deduplicating terms per document, leveraging combiners, and using bounded heaps. Proposed design achieves required output format within ~ 20 min of execution time.
 
 As suggested in task local debugging was performed before uploading to cluster. The same scripts work unchanged on the Hadoop because of parameterized input paths and relative file references. 
-
-
-```mermaid
-flowchart LR
-    A[Input: JSON reviews] --> B[Preprocess & Tokenize]
-    B --> C[CountStatsJob Mapper / Combiner / Reducer]
-    C --> D[Counts Output]
-    D --> E[extract_meta_counts<br/>meta.json]
-    D --> F[ScoreTopKJob Mapper<br/>re-key by term]
-    E --> G[Reducer Init<br/>load meta.json]
-    F --> H[Reducer<br/>compute chi2, update top-k heap]
-    G --> H
-    H --> I[Reducer Final<br/>emit per category ranked terms]
-    I --> J[build_output.py<br/>output.txt]
-```
