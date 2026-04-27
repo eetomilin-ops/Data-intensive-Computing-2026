@@ -2,10 +2,12 @@
 presentation should follow **req12** from ./requirements/Requirements.md
 target is PDF after css application to .md
 -->
-# 194.048 Data-intensive Computing 2026S
-*Task 1: Chi-Square Term Selection Using MapReduce on Amazon Reviews*\
-Group 58: Tomilin Evgenii ,Sajan Sonu, Puthumana Kudiyirikkal Neeraj, Taikandi Mohammed Muhammed Musthaq, Krishnan Karun
+# *Task 1: Chi-Square Term Selection Using MapReduce on Amazon Reviews*
+```
+194.048 Data-intensive Computing 2026S
 
+Group 58: Tomilin Evgenii ,Sajan Sonu, Puthumana Kudiyirikkal Neeraj, Taikandi Mohammed Muhammed Musthaq, Krishnan Karun
+```
 ## 1. Introduction
 
 Task focuses on high volume text processing using MapReduce applied to Amazon Reviews dataset. Objective is extraction of discriminative unigram features per product category using chi-square statistic.\
@@ -103,6 +105,7 @@ The metadata (`N` and `N_c`) is loaded in `reducer_init`, so every reducer has t
 ### 3.4 Pipeline
 
 ```mermaid
+%%{init: {'themeVariables': { 'fontSize': '11px' }}}%%
 flowchart TB
     subgraph Job1[Job 1: CountStatsJob]
         direction TB
@@ -147,6 +150,7 @@ As suggested in task local debugging was performed before uploading to cluster. 
 ## Appendix A: Call sequence and function reference
 
 ```mermaid
+%%{init: {'themeVariables': { 'fontSize': '12px' }}}%%
 sequenceDiagram
     participant User
     participant Pipeline as run_pipeline.sh
