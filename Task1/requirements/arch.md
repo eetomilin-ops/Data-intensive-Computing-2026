@@ -7,7 +7,7 @@
 - Primary quality attribute is speed on the full dataset, with low deployment risk on shared infrastructure.
 - Hard constraints are mrjob, relative paths, parameterized input paths, document-per-category chi-square semantics, and output in the assignment format.
 
-## 1. Function Blocks
+## 1. Function blocks
 
 | Block | Main functions | Purpose | Description | Implemented in |
 | --- | --- | --- | --- | --- |
@@ -22,7 +22,7 @@
 | Output builder | `read_ranked_terms`, `format_category_line`, `merge_dictionary`, `write_output` | Produce final deliverable text | Sort categories alphabetically, serialize the top 75 terms per category, and emit the merged dictionary line. | `src/build_output.py` |
 | Local debug harness | `run_local_debug`, `run_smoke_case` | Shorten iteration time | Run the same pipeline on the split dev files locally before any HDFS execution. | `src/run_local_debug.sh`, `src/tests/test_smoke_local.py` |
 
-## 2. Function Call Sequence
+## 2. Function call sequence
 
 Recommended execution order for both local debugging and cluster runs:
 
@@ -105,7 +105,7 @@ flowchart TD
 
 Avoid `pandas`, `numpy`, `scipy`, Spark, or any non-standard tokenizer package. They increase deployment risk and are unnecessary for this assignment.
 
-## 4. Project Structure
+## 4. Project structure
 
 ```text
 Task1/                                       assignment root for code, docs, and final artifacts
@@ -132,14 +132,14 @@ Task1/                                       assignment root for code, docs, and
 
 ```
 
-## 5. Speed-First
+## 5. Speed-first
 *Job 1* computes all counts in one raw-data pass, a tiny meta extractor builds `N` and `N_c`
 
 *Job 2* computes chi-square and top 75, local builder writes `output.txt`.
 
 It is the best tradeoff for this assignment which minimizes full-dataset scans, keeps dependencies minimal, remains debuggable locally, and avoids overly clever mrjob internals that are risky on a shared Hadoop cluster.
 
-## 6. Architectural Decision Records
+## 6. Architectural decision records
 
 ### ADR-001: Choose a two-job pipeline
 
@@ -162,14 +162,14 @@ It is the best tradeoff for this assignment which minimizes full-dataset scans, 
 - Decision: Restrict the implementation stack to Python, mrjob, bash, and standard library modules.
 - Consequences: Packaging is simpler, deployment risk is lower, and local debugging remains close to cluster behavior.
 
-## 7. Local Debugging Strategy
+## 7. Local debugging strategy
 
 - Run the exact same two-job pipeline locally with `-r local` before any Hadoop execution.
 - Use the provided split dev files as the default smoke-test input set.
 - Add a very small fixture with known expected chi-square ordering to validate correctness before scale tests.
 - Only switch to the full HDFS path after local correctness and one small-cluster sanity run are stable.
 
-## 8. Function Dependency Tree
+## 8. Function dependency tree
 
 ```text
 run_pipeline.sh
