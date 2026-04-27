@@ -129,16 +129,15 @@ flowchart TB
     Ranked --> Build[build_output.py]
     Build --> Out[output.txt<br>top-75 terms per category<br>+ merged dictionary]
 ```
-**Figure 1:** Data flow and key‑value pairs across the two‑stage pipeline. Stage 1 emits tagged counts; Stage 2 re‑keys by term, computes chi‑square, and retains the top‑75 terms per category using bounded heaps. Metadata (`N`, `N_c`) is broadcast via a local `meta.json` file.
+**Figure 1:** Two-stage MapReduce pipeline. **Job 1** scans raw reviews and emits four tagged document-presence counts aggregated to totals. Between jobs, `meta.json` broadcasts `N` and `N_c`. **Job 2** re-keys counts by term, computes chi-square per category, and retains the top-75 terms per category via a bounded heap; `reducer_final` emits ranked `term:score` strings per category. `build_output.py` assembles the final `output.txt`.
 
-**Count statistics (Job 1 – `CountStatsJob`):** *mapper_init* in `job_count_stats.py` calls *load_stopwords* and *compile_tokenizer* once per process. *mapper* calls *safe_parse_review*, *extract_required_fields*, *filter_tokens*, and *unique_terms_for_document*, then emits four tagged key‑value pairs: `("N",) → 1`, `("NC", category) → 1`, `("NT", term) → 1`, `("NTC", category, term) → 1`. *combiner* sums counts locally before the shuffle; *reducer* writes the final aggregated counts.
+**Count statistics (Job 1):** output — aggregated counts `N`, `NC`, `NT`, `NTC`.
 
-**Metadata extraction:** *extract_meta_counts* reads the count output and collects `N` (total documents) and `N_c` (per‑category document counts). *write_meta_json* in `build_output.py` serialises them into `meta.json`, passed as a broadcast resource to Job 2 so every reducer can access `N` and `N_c` without additional shuffling.
+**Metadata extraction:** output — `meta.json` with `N` and `N_c`, broadcast to Job 2.
 
-The Scoring & Top‑k stage (ScoreTopKJob) processes the aggregated counts from the first job. Its mapper re‑keys the data by term: for a global term count it emits (term, (NT, None, count)), and for a per‑category term count it emits (term, (NTC, category, count)). This guarantees that all counts for the same term land in the same reducer. Each reducer’s reducer_init() loads meta.json to obtain N and N_c. In the reducer function, the term’s global count N_t is extracted from the NT value, and a dictionary of per‑category counts ntcs is built from the NTC values. For every category where the term appears, compute_chi_square(N, N_c[cat], N_t, N_tc) calculates the chi‑square score. The bounded heap routine update_top_k(heap[cat], score, term) retains only the top 75 terms per category, using a tie‑breaker that prefers lexicographically smaller terms. After all terms are processed, reducer_final() emits for each category a string of the form "term1:score1 term2:score2 ..." with terms sorted descending by score.
+**Scoring & Top-k (Job 2):** 
 
-**Output assembly:** *read_ranked_terms* collects ranked results from Job 2 output; *format_category_line* formats each category line with its top‑75 term‑score pairs in descending score order; *merge_dictionary* produces a single alphabetically sorted dictionary line; *write_output* in `build_output.py` writes `output.txt` with categories sorted alphabetically.\
-**Orchestration:** `run_pipeline.sh` drives all stages via *run_pipeline*, resolves local or HDFS paths via *resolve_mode*, and uses *hdfs_getmerge_to_local* (`hadoop fs -getmerge`) between stages in Hadoop mode.
+**Output assembly:** output — `output.txt` with categories alphabetically, top-75 terms per category, and merged dictionary line.
 
 ## 4. Conclusions
 Implemented two‑job MapReduce solution successfully executes on LBD cluster. Pipeline minimizes shuffle volume and memory consumption by deduplicating terms per document, leveraging combiners, and using bounded heaps. Proposed design achieves required output format within ~ 20 min of execution time.
