@@ -1,0 +1,45 @@
+# Virtual environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Spark
+metastore_db/
+derby.log
+spark-warehouse/
+
+# Jupyter (if accidentally created)
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Output files
+output/
+*.txt
+!requirements.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temp files
+*.tmp
+*.bak
