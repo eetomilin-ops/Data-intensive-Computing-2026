@@ -382,4 +382,63 @@ param_grid = ParamGridBuilder() \
 - Spark ML may produce different results than Task 1 mrjob implementation
 - Document and explain any differences in report
 - Focus on correctness, efficiency, and clear documentation
+
+---
+
+# Project structure
+
+```
+Task2/
+├── .venv/                       # Virtual environment (ignored)
+├── .gitignore
+│
+├── data/
+│   └── readme.md                # Local dev data location
+│
+├── materials/
+│   ├── Assignment_2_Instructions.pdf
+│   └── req.md
+│
+├── src/
+│   ├── settings.py              # Paths, constants, Spark configs
+│   ├── common.py                # Shared utilities (load stopwords, helpers)
+│   │
+│   ├── part1_runner.py          # Part 1: Execute full RDD pipeline
+│   ├── part1_load.py            # Load JSON as RDD
+│   ├── part1_tokenize.py        # Tokenization + stopword filter (RDD ops)
+│   ├── part1_chi_square.py      # Chi-square calculation (RDD ops)
+│   ├── part1_aggregate.py       # Top-k selection and merge (RDD ops)
+│   ├── part1_output.py          # Format and save output_rdd.txt
+│   │
+│   ├── part2_runner.py          # Part 2: Execute DataFrame pipeline
+│   ├── part2_load.py            # Load JSON as DataFrame
+│   ├── part2_tokenizer.py       # Tokenizer transformer setup
+│   ├── part2_stopwords.py       # StopWordsRemover transformer setup
+│   ├── part2_vectorizer.py      # CountVectorizer/HashingTF transformer
+│   ├── part2_idf.py             # IDF estimator setup
+│   ├── part2_chi_selector.py    # ChiSqSelector transformer setup
+│   ├── part2_pipeline.py        # Build and fit ML Pipeline
+│   ├── part2_output.py          # Extract terms, save output_ds.txt
+│   │
+│   ├── part3_runner.py          # Part 3: Execute classification pipeline
+│   ├── part3_data_split.py      # Train/validation/test split
+│   ├── part3_normalizer.py      # Normalizer transformer setup
+│   ├── part3_svm_estimator.py   # LinearSVC estimator setup
+│   ├── part3_pipeline.py        # Extend Part 2 pipeline with classifier
+│   ├── part3_grid_builder.py    # ParamGridBuilder configuration
+│   ├── part3_cross_validator.py # CrossValidator setup and execution
+│   ├── part3_evaluator.py       # MulticlassClassificationEvaluator
+│   └── part3_output.py          # Save metrics, F1 scores, comparison
+│   │
+│   └── run_all.py               # Master script: runs all 3 parts sequentially
+│
+├── output/
+│   ├── output_rdd.txt           # Part 1 results
+│   ├── output_ds.txt            # Part 2 results
+│   ├── part3_metrics.json       # Part 3 grid search results
+│   └── part3_comparison.txt     # Part 3 performance comparison
+│
+└── presentation/
+    └── presentation.md          # Report draft
+```
 - Use development set for all deliverables (avoid full dataset to reduce cluster load)

@@ -21,9 +21,9 @@ spark-warehouse/
 *.ipynb_checkpoints
 
 # Output files
-output/
-*.txt
-!requirements.txt
+output/*.txt
+output/*.json
+!output/.gitkeep
 
 # IDE
 .vscode/
