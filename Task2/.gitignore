@@ -25,6 +25,11 @@ output/*.txt
 output/*.json
 !output/.gitkeep
 
+# Extracted data samples (too large, downloaded from cluster)
+data/reviews_devset_5k.json
+data/stopwords.txt
+data/task2_dev_data.tar.gz
+
 # IDE
 .vscode/
 .idea/

@@ -570,3 +570,22 @@ scp e12533692@lbd.tuwien.ac.at:~/Task2/data/stopwords.txt .
 - 5k provides sufficient variety for local testing
 - Fast iteration during development
 - Keeps git repo size manageable
+
+### Data extraction fixes (2026-05-13)
+Fixed `data/extract_sample.sh` path resolution:
+
+- Uses `SCRIPT_DIR` (script location) to resolve all paths absolutely
+- Derives repo root from script location: `SCRIPT_DIR/../..`
+- Tries 3 stopwords sources in order:
+  1. `$REPO_ROOT/Task1/requirements/Assets/stopwords.txt` (git repo)
+  2. `$SCRIPT_DIR/stopwords.txt` (already downloaded)
+  3. `/dic_shared/assets/stopwords.txt` (HDFS mirror, if cluster provides it)
+- Outputs to `$SCRIPT_DIR/reviews_devset_5k.json`
+- Added tarball packaging hint for scp download
+
+Updated `settings.py`:
+- `LOCAL_DEVSET` checks for `data/reviews_devset_5k.json` first (extracted sample), falls back to Task1 dev parts
+- `LOCAL_STOPWORDS` checks `data/stopwords.txt` first, falls back to Task1 assets
+
+Updated `.gitignore`:
+- Excludes extracted data files: `reviews_devset_5k.json`, `stopwords.txt`, `task2_dev_data.tar.gz`
