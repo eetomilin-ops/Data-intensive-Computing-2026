@@ -442,3 +442,131 @@ Task2/
     └── presentation.md          # Report draft
 ```
 - Use development set for all deliverables (avoid full dataset to reduce cluster load)
+
+---
+
+# Development log
+
+## 2026-05-13: Project initialization
+
+### Structure created
+- 27 Python modules organized by functional Spark blocks
+- Part 1: RDD operations (6 modules)
+- Part 2: DataFrame/Pipeline transformers and estimators (8 modules)
+- Part 3: Classification with grid search (9 modules)
+- Core: settings.py, common.py, run_all.py
+
+### Settings configuration
+Updated `settings.py` with runtime environment switching:
+- **RUN_LOCAL** env var: Toggle between local and cluster execution
+- **Local mode**: Uses merged devset from data/, 4GB memory, local[*] master
+- **Cluster mode**: Uses HDFS paths, 8GB memory, YARN master with 4 executors
+- Separate Spark configs for each environment
+- Path resolution via pathlib for cross-platform compatibility
+- Debug flag via DEBUG env var
+
+### Dependencies
+Created `requirements.txt` with minimal dependency:
+- **pyspark==4.1.1** - Only external dependency required
+- All other functionality uses Python stdlib (os, pathlib, json, re)
+- Cluster already provides PySpark, requirements.txt for local development only
+
+### Runner architecture
+**Why runners are .py not .sh:**
+- Python runners can import modules, manage SparkSession lifecycle
+- Direct Spark configuration and orchestration in Python
+- Executable via `python part1_runner.py` locally or `spark-submit part1_runner.py` on cluster
+- Shell scripts would add unnecessary indirection layer
+- Python runners maintain type safety and can use shared utilities
+
+### Runtime usage
+```bash
+# Local execution
+RUN_LOCAL=true python src/part1_runner.py
+
+# Cluster execution
+RUN_LOCAL=false spark-submit src/part1_runner.py
+
+# Or via run_all
+python src/run_all.py
+```
+
+### Shell wrappers
+Created executable shell scripts for clean invocation:
+- `run_part1.sh`, `run_part2.sh`, `run_part3.sh` - Individual part runners
+- `run_all.sh` - Master orchestrator
+
+**Features:**
+- Auto-detect RUN_LOCAL env var (defaults to true)
+- Local mode: calls `python part*_runner.py`
+- Cluster mode: calls `spark-submit part*_runner.py`
+- Pass through all arguments: `./run_part1.sh --arg value`
+- Set exec permissions via `chmod +x`
+
+**Usage:**
+```bash
+# Local execution (default)
+./src/run_part1.sh
+
+# Cluster execution
+RUN_LOCAL=false ./src/run_part1.sh
+
+# Run all parts
+./src/run_all.sh
+
+# With output redirection
+./src/run_part1.sh > logs/part1.log 2>&1
+```
+
+**Packaging-ready:** Common pattern for distributable Python projects - abstracts runtime details from users.
+
+### Common utilities
+Updated `common.py` with Task1-aligned constants and functions:
+
+**Field name constants:**
+- All JSON field names from Amazon review dataset as constants
+- Makes code more maintainable and refactor-safe
+
+**Tokenization constants:**
+- `TOKEN_DELIMITER_PATTERN` - Same regex as Task1 for consistency
+- `MIN_TOKEN_LENGTH = 2` - Filter single-character tokens
+
+**Functions:**
+- `load_stopwords()` - Load stopword set from file
+- `create_spark_session()` - Uses settings.SPARK_CONFIG for environment-aware session
+- `safe_parse_review()` - JSON parsing with error handling
+- `extract_category_text()` - Extract (category, reviewText) tuple
+- `tokenize_text()` - Split text using delimiter pattern
+- `filter_tokens()` - Remove stopwords and short tokens
+- `compute_chi_square()` - Chi-square statistic on 2x2 contingency table (document-presence)
+
+All utilities adapted from Task1 for compatibility and reuse existing logic.
+
+### Sample data extraction
+Created `data/extract_sample.sh` for cluster execution:
+
+**Purpose:** Extract 5000-record sample from cluster HDFS for local development
+
+**Features:**
+- Reads from `hdfs:///dic_shared/amazon-reviews/full/reviews_devset.json`
+- Outputs `reviews_devset_5k.json` (5000 records)
+- Copies `stopwords.txt` from Task1
+- Validates JSON format
+- Shows sample record for verification
+- Provides scp download commands
+
+**Usage on cluster:**
+```bash
+cd ~/Task2/data
+./extract_sample.sh
+
+# Then download to local machine:
+scp e12533692@lbd.tuwien.ac.at:~/Task2/data/reviews_devset_5k.json .
+scp e12533692@lbd.tuwien.ac.at:~/Task2/data/stopwords.txt .
+```
+
+**Why 5000 records:**
+- Full devset is ~14k records (0.1% sample of 14M)
+- 5k provides sufficient variety for local testing
+- Fast iteration during development
+- Keeps git repo size manageable

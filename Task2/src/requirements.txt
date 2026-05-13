@@ -1,0 +1,5 @@
+# Task2 Python dependencies
+# Minimal setup - only PySpark required
+# All other dependencies are Python stdlib
+
+pyspark==4.1.1

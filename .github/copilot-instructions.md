@@ -33,6 +33,9 @@ These instructions apply to the whole workspace.
 - For general code, use inline comments for expressions and place comments above block structures such as functions, loops, and try blocks.
 - Reuse the explicit function names and file mappings already documented in `arch.md`.
 - If new functions or files are needed, follow the existing naming conventions and document them in `arch.md`.
+- Never use Unicode symbols, emoji, or decorative glyphs (e.g. checkmarks, crosses, arrows, bullet ornaments) in source code, comments, shell scripts, markdown output, or terminal messages. Use plain ASCII text only.
+- Do not add unnecessary guard clauses. Fail loudly with clear error messages rather than silently swallowing exceptions or returning None for recoverable conditions.
+- Keep it simple (KISS). Prefer straightforward, obvious solutions over clever abstractions. Minimize indirection layers and avoid premature generalization.
 
 ## Validation
 - Prefer local validation on the provided development shards before assuming cluster runs.
