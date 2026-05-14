@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 RUN_LOCAL=${RUN_LOCAL:-true}
 
 if [[ "$RUN_LOCAL" == "true" ]]; then
-    python part3_runner.py "$@"
+    python part3_09_runner.py "$@"
 else
-    spark-submit part3_runner.py "$@"
+    spark-submit part3_09_runner.py "$@"
 fi
