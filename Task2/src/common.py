@@ -33,6 +33,15 @@ def create_spark_session():
         builder = builder.config(key, value)
     return builder.getOrCreate()
 
+def load_reviews_df(spark, path: str):
+    # on HDFS pass path directly; locally read via Python to avoid Hadoop
+    # GlobFilter issues with [] or other special chars in the file path
+    from settings import RUN_LOCAL
+    if RUN_LOCAL:
+        lines = open(path, 'r', encoding='utf-8').readlines()
+        return spark.read.json(spark.sparkContext.parallelize(lines))
+    return spark.read.json(path)
+
 def safe_parse_review(line: str) -> dict[str, Any] | None:
     try:
         return json.loads(line)

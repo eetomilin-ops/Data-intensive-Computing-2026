@@ -589,3 +589,16 @@ Updated `settings.py`:
 
 Updated `.gitignore`:
 - Excludes extracted data files: `reviews_devset_5k.json`, `stopwords.txt`, `task2_dev_data.tar.gz`
+
+### Schema verification (2026-05-14)
+Verified DataFrame column mapping against sample data:
+
+- 5000 rows, 0 nulls on reviewText and category
+- FIELD_REVIEW_TEXT = "reviewText" matches schema
+- FIELD_CATEGORY = "category" matches schema
+- Spark 4.1.1 + Java 21 required for local dev (Java 25 incompatible with Hadoop viewfs)
+
+Path fix in common.py:
+- `load_reviews_df()` reads locally via Python `open()` then `parallelize()` to avoid Hadoop GlobFilter issues with `[]` in workspace paths.
+- On cluster HDFS paths are passed directly to `spark.read.json()`.
+

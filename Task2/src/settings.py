@@ -2,32 +2,28 @@
 import os
 from pathlib import Path
 
-# Runtime environment switch
+# local dev requires Java 21 (cluster uses Ubuntu 24.04 default)
+# export JAVA_HOME=/usr/local/opt/openjdk@21
+
+# runtime environment
 RUN_LOCAL = os.getenv("RUN_LOCAL", "true").lower() == "true"
 
-# Base paths
+# base directories
 BASE_DIR = Path(__file__).parent.parent
 DATA_DIR = BASE_DIR / "data"
 OUTPUT_DIR = BASE_DIR / "output"
 
-# Dataset paths - local (priority: extracted sample, then Task1 dev parts)
-_LOCAL_SAMPLE = DATA_DIR / "reviews_devset_5k.json"
-_LOCAL_TASK1_PARTS = Path("../../Task1/requirements/Assets/reviews_devset.part_*.json")
-LOCAL_DEVSET = str(_LOCAL_SAMPLE) if _LOCAL_SAMPLE.exists() else str(_LOCAL_TASK1_PARTS)
+# local dataset -- from data/extract_sample.sh
+LOCAL_DEVSET = DATA_DIR / "reviews_devset_5k.json"
+LOCAL_STOPWORDS = DATA_DIR / "stopwords.txt"
 
-# stopwords - local copy first, fallback to Task1 assets
-_LOCAL_STOP = DATA_DIR / "stopwords.txt"
-_LOCAL_STOP_TASK1 = Path("../../Task1/requirements/Assets/stopwords.txt")
-LOCAL_STOPWORDS = str(_LOCAL_STOP) if _LOCAL_STOP.exists() else str(_LOCAL_STOP_TASK1)
+# cluster HDFS (confirmed 2026-05-14)
+HDFS_DEVSET = "/dic_shared/amazon-reviews/full/reviews_devset.json"        # ~58 MB, for grading
+# HDFS_FULL  = "/dic_shared/amazon-reviews/full/reviewscombined.json"       # ~58 GB, not required for T2
 
-# Dataset paths - cluster HDFS
-HDFS_DEVSET = "hdfs:///dic_shared/amazon-reviews/full/reviews_devset.json"
-HDFS_FULL = "hdfs:///dic_shared/amazon-reviews/full/reviewscombined.json"
-HDFS_USER_HOME = f"hdfs:///user/{os.getenv('USER', 'e12533692')}"
-
-# Active dataset paths based on runtime
-DATASET_PATH = LOCAL_DEVSET if RUN_LOCAL else HDFS_DEVSET
-STOPWORDS_PATH = LOCAL_STOPWORDS
+# active paths
+DATASET_PATH = str(LOCAL_DEVSET.resolve()) if RUN_LOCAL else HDFS_DEVSET
+STOPWORDS_PATH = str(LOCAL_STOPWORDS.resolve()) if RUN_LOCAL else str(LOCAL_STOPWORDS)
 
 # Output paths
 OUTPUT_RDD = str(OUTPUT_DIR / "output_rdd.txt")
