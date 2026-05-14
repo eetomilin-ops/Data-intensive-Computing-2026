@@ -602,3 +602,118 @@ Path fix in common.py:
 - `load_reviews_df()` reads locally via Python `open()` then `parallelize()` to avoid Hadoop GlobFilter issues with `[]` in workspace paths.
 - On cluster HDFS paths are passed directly to `spark.read.json()`.
 
+
+
+---
+
+# Part 1 implementation
+
+## Execution sequence
+
+```
+Step 01: part1_01_load      -> 02 -> 03 -> 04 -> 05
+         part1_02_tokenize       |    |    |    |
+         part1_03_chi_square ----+    |    |    |
+         part1_04_aggregate ----------+    |    |
+         part1_05_output -----------------+    |
+         part1_06_runner ---------------------+
+```
+
+## Step IO (YAML)
+
+```yaml
+01_load:
+  input:  JSON lines file (reviews_devset_5k.json or HDFS path)
+  output: RDD[(category: str, reviewText: str)]
+  drops:  records missing category or reviewText field
+
+02_tokenize:
+  input:  RDD[(category: str, reviewText: str)]
+  output: RDD[(category: str, terms: set[str])]
+  logic:  regex split + lowercase + stopword removal + deduplication
+
+03_chi_square:
+  input:  RDD[(category: str, terms: set[str])]
+  output: RDD[(category: str, term: str, chi2_score: float)]
+  logic:  flatMap tagged counters -> reduceByKey -> chi-square on driver
+
+04_aggregate:
+  input:  RDD[(category: str, term: str, chi2_score: float)]
+  output: dict[category: list[(term, score)]] + list[str]
+  logic:  groupByKey -> top-75 by score desc, term asc -> merge alphabetically
+
+05_output:
+  input:  dict + merged list
+  output: output_rdd.txt (3 category lines + 1 merged dictionary line)
+
+06_runner:
+  input:  settings (paths, params)
+  output: orchestrates steps 01-05, prints progress
+  guard:  try/finally with spark.stop() in finally block
+```
+
+## Purpose of each step
+
+**01_load**
+Read the JSON review dataset (local or HDFS) and extract only the two fields needed
+for chi-square feature selection. Drops malformed lines and records missing
+category or reviewText to keep the pipeline compact.
+
+**02_tokenize**
+Convert free-text reviews into sets of lowercase unigrams. Uses the same regex
+delimiter pattern as Task 1 for consistent results. Deduplicates terms per
+document (document-presence semantics) before stopword filtering. This is the
+only point that loads the stopword list -- it broadcasts naturally through the
+RDD closure.
+
+**03_chi_square**
+Collects all contingency-table counters in one flatMap/reduceByKey pass:
+total docs (N), docs per category (Nc), docs per term (Nt), and docs per
+(category, term) pair (Ntc). After aggregation the driver computes chi-square
+for every pair. Sentinel prefixed keys (__N__, __NC__, __NT__) keep
+everything in one key space so a single reduceByKey accumulates all counters.
+The sentinel pairs are filtered out before scoring.
+
+**04_aggregate**
+Groups scored pairs by category and selects the top 75 terms per category.
+Sort order: chi-square score descending, then term alphabetically for ties.
+Collects all unique terms across categories into a merged alphabetical list
+for the dictionary line.
+
+**05_output**
+Writes output_rdd.txt in the exact format from Task 1: one line per category
+(sorted alphabetically), each with 75 term:score pairs in descending order,
+followed by one line containing all terms space-separated and alphabetically
+sorted.
+
+## Mermaid diagram
+
+```mermaid
+flowchart LR
+    A[reviews_devset_5k.json] -->|spark.read.text| B(01_load)
+    B -->|RDD cat, text| C(02_tokenize)
+    C -->|RDD cat, term_set| D(03_chi_square)
+    D -->|RDD cat, term, chi2| E(04_aggregate)
+    E -->|dict + list| F(05_output)
+    F -->|write| G[output_rdd.txt]
+
+    B -->|map json.loads| B1[parse JSON]
+    B1 -->|filter null cat/text| B2[drop bad records]
+    B2 -->|map| B3[(cat, text)]
+
+    C -->|re.split + lower| C1[tokenize]
+    C1 -->|remove stopwords| C2[filter]
+    C2 -->|set| C3[deduplicate]
+
+    D -->|flatMap| D1[emit tagged counters]
+    D1 -->|reduceByKey| D2[N, Nc, Nt, Ntc dict]
+    D2 -->|compute chi2| D3[(cat, term, score)]
+
+    E -->|groupByKey| E1[sort score desc]
+    E1 -->|take 75| E2[top-k per cat]
+    E2 -->|collectAsMap| E3[driver dict]
+    E3 -->|set union + sorted| E4[merged list]
+
+    F -->|sorted categories| F1[cat lines]
+    F1 -->|sorted terms| F2[dictionary line]
+```
