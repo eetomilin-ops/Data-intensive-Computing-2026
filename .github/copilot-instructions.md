@@ -36,6 +36,7 @@ These instructions apply to the whole workspace.
 - Never use Unicode symbols, emoji, or decorative glyphs (e.g. checkmarks, crosses, arrows, bullet ornaments) in source code, comments, shell scripts, markdown output, or terminal messages. Use plain ASCII text only.
 - Do not add unnecessary guard clauses. Fail loudly with clear error messages rather than silently swallowing exceptions or returning None for recoverable conditions.
 - Keep it simple (KISS). Prefer straightforward, obvious solutions over clever abstractions. Minimize indirection layers and avoid premature generalization.
+- Always wrap Spark pipeline execution in try/finally. Call `spark.stop()` in the finally block so cores are released on the cluster regardless of task failures, exceptions, or early exits.
 
 ## Validation
 - Prefer local validation on the provided development shards before assuming cluster runs.

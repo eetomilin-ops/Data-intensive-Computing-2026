@@ -9,42 +9,44 @@ from settings import DATASET_PATH, STOPWORDS_PATH, OUTPUT_RDD, TOP_TERMS_PER_CAT
 
 if __name__ == "__main__":
     spark = create_spark_session()
-    sc = spark.sparkContext
-    sc.setLogLevel('WARN')
+    try:
+        sc = spark.sparkContext
+        sc.setLogLevel('WARN')
 
-    # ship source modules to workers so flatMap/map lambdas can import them
-    src_dir = Path(__file__).parent
-    for mod in ['common.py', 'part1_03_chi_square.py', 'part1_02_tokenize.py',
-                'part1_01_load.py', 'part1_04_aggregate.py', 'part1_05_output.py']:
-        sc.addPyFile(str(src_dir / mod))
+        # ship source modules to workers so flatMap/map lambdas can import them
+        src_dir = Path(__file__).parent
+        for mod in ['common.py', 'part1_03_chi_square.py', 'part1_02_tokenize.py',
+                    'part1_01_load.py', 'part1_04_aggregate.py', 'part1_05_output.py']:
+            sc.addPyFile(str(src_dir / mod))
 
-    from part1_01_load import load_reviews_rdd
-    from part1_02_tokenize import tokenize_document
-    from part1_03_chi_square import count_and_score
-    from part1_04_aggregate import select_top_k_per_category, merge_all_terms
-    from part1_05_output import write_output
+        from part1_01_load import load_reviews_rdd
+        from part1_02_tokenize import tokenize_document
+        from part1_03_chi_square import count_and_score
+        from part1_04_aggregate import select_top_k_per_category, merge_all_terms
+        from part1_05_output import write_output
 
-    print(f"Dataset  : {DATASET_PATH}")
-    print(f"Stopwords: {STOPWORDS_PATH}")
+        print(f"Dataset  : {DATASET_PATH}")
+        print(f"Stopwords: {STOPWORDS_PATH}")
 
-    stopwords = load_stopwords(STOPWORDS_PATH)
-    print(f"Stopwords loaded: {len(stopwords)}")
+        stopwords = load_stopwords(STOPWORDS_PATH)
+        print(f"Stopwords loaded: {len(stopwords)}")
 
-    raw = load_reviews_rdd(spark, DATASET_PATH)
+        raw = load_reviews_rdd(spark, DATASET_PATH)
 
-    tokenized = raw.map(lambda r: tokenize_document(r, stopwords))
+        tokenized = raw.map(lambda r: tokenize_document(r, stopwords))
 
-    scored = count_and_score(tokenized)
-    print(f"Scored pairs  : {scored.count()}")
+        scored = count_and_score(tokenized)
+        print(f"Scored pairs  : {scored.count()}")
 
-    top = select_top_k_per_category(scored, TOP_TERMS_PER_CATEGORY)
-    print(f"Categories    : {len(top)}")
+        top = select_top_k_per_category(scored, TOP_TERMS_PER_CATEGORY)
+        print(f"Categories    : {len(top)}")
 
-    merged = merge_all_terms(top)
-    print(f"Merged terms  : {len(merged)}")
+        merged = merge_all_terms(top)
+        print(f"Merged terms  : {len(merged)}")
 
-    write_output(top, merged, OUTPUT_RDD)
-    print(f"Output written: {OUTPUT_RDD}")
+        write_output(top, merged, OUTPUT_RDD)
+        print(f"Output written: {OUTPUT_RDD}")
 
-    spark.stop()
-    print("Part 1 done.")
+        print("Part 1 done.")
+    finally:
+        spark.stop()
