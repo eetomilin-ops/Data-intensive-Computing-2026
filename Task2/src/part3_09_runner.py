@@ -64,7 +64,7 @@ if __name__ == "__main__":
         test_f1 = evaluator.evaluate(test_preds)
         print(f"Test F1   : {test_f1:.4f}")
 
-        save_metrics(cv_model, OUTPUT_METRICS)
+        save_metrics(spark, cv_model, OUTPUT_METRICS)
         print(f"Metrics   : {OUTPUT_METRICS}")
         print("Part 3 done.")
     finally:

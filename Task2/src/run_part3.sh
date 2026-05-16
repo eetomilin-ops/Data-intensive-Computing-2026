@@ -22,6 +22,6 @@ if [[ "$RUN_LOCAL" == "true" ]]; then
     "$PYTHON" part3_09_runner.py "$@"
 else
     export HADOOP_CONF_DIR=/etc/hadoop/conf
-    spark-submit part3_09_runner.py "$@"
+    spark-submit --master yarn --deploy-mode cluster part3_09_runner.py "$@"
 fi
 unset LOCAL_SPARK_RAM 2>/dev/null

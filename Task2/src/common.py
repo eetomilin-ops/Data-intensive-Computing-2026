@@ -36,6 +36,19 @@ def load_reviews_df(spark, path: str):
     rdd = _load_text_rdd(spark, path)
     return spark.read.json(rdd)
 
+import os
+
+def write_text_file(spark, lines: list[str], path: str):
+    # HDFS output (cluster mode) -- use Spark saveAsTextFile, creates part file.
+    # Local output -- plain open().
+    if path.startswith("/user/") or path.startswith("hdfs://"):
+        spark.sparkContext.parallelize(lines, 1).saveAsTextFile(path)
+        return
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, 'w', encoding='utf-8') as f:
+        for line in lines:
+            f.write(line + '\n')
+
 def tokenize_text(text: str) -> list[str]:
     tokens = re.split(TOKEN_DELIMITER_PATTERN, text)
     return [t.lower() for t in tokens if t]

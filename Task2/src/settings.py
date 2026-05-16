@@ -30,11 +30,12 @@ HDFS_DEVSET = "/dic_shared/amazon-reviews/full/reviews_devset.json"        # ~58
 DATASET_PATH = str(LOCAL_DEVSET.resolve()) if RUN_LOCAL else HDFS_DEVSET
 STOPWORDS_PATH = str(LOCAL_STOPWORDS.resolve()) if RUN_LOCAL else str(LOCAL_STOPWORDS)
 
-# Output paths
-OUTPUT_RDD = str(OUTPUT_DIR / "output_rdd.txt")
-OUTPUT_DS = str(OUTPUT_DIR / "output_ds.txt")
-OUTPUT_METRICS = str(OUTPUT_DIR / "part3_metrics.json")
-OUTPUT_COMPARISON = str(OUTPUT_DIR / "part3_comparison.txt")
+# Output paths -- local filesystem for dev, HDFS for cluster (driver on YARN node)
+HDFS_OUTPUT_DIR = "/user/e12533692/DIC_Task2/output"
+OUTPUT_RDD = str(OUTPUT_DIR / "output_rdd.txt") if RUN_LOCAL else f"{HDFS_OUTPUT_DIR}/output_rdd.txt"
+OUTPUT_DS = str(OUTPUT_DIR / "output_ds.txt") if RUN_LOCAL else f"{HDFS_OUTPUT_DIR}/output_ds.txt"
+OUTPUT_METRICS = str(OUTPUT_DIR / "part3_metrics.json") if RUN_LOCAL else f"{HDFS_OUTPUT_DIR}/part3_metrics.json"
+OUTPUT_COMPARISON = str(OUTPUT_DIR / "part3_comparison.txt") if RUN_LOCAL else f"{HDFS_OUTPUT_DIR}/part3_comparison.txt"
 
 # Spark configuration - local
 SPARK_LOCAL_CONFIG = {
@@ -44,19 +45,10 @@ SPARK_LOCAL_CONFIG = {
     "spark.sql.shuffle.partitions": "8",
 }
 
-# YARN nodes must reach the driver -- bind to all interfaces, and advertise
-# the pod IP so AM can connect back.  hostname -i gives the internal pod IP.
-import subprocess
-_DRIVER_HOST = subprocess.run(["hostname", "-i"], capture_output=True, text=True).stdout.strip()
-
-# Spark configuration - cluster.  YARN container cap is 8192 MB.
-# 7g (7168 MB) + ~716 MB overhead = ~7884 MB fits within the limit.
+# Spark configuration - cluster.  Submitted via spark-submit --master yarn.
+# Driver runs on YARN node, so outputs must land in HDFS (retrieve later).
 SPARK_CLUSTER_CONFIG = {
-    "spark.master": "yarn",
-    "spark.submit.deployMode": "client",
     "spark.driver.memory": "8g",
-    "spark.driver.host": _DRIVER_HOST,
-    "spark.driver.bindAddress": "0.0.0.0",
     "spark.executor.memory": "7g",
     "spark.executor.instances": "2",
     "spark.sql.shuffle.partitions": "200",

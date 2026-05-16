@@ -1,9 +1,8 @@
 # Save grid search results: param configs and their F1 scores.
 import json
-import os
+from common import write_text_file
 
-def save_metrics(cv_model, output_path: str):
-    # CrossValidatorModel exposes avgMetrics (one per param config)
+def save_metrics(spark, cv_model, output_path: str):
     results = []
     for params, f1 in zip(cv_model.getEstimatorParamMaps(), cv_model.avgMetrics):
         flat = {}
@@ -11,6 +10,4 @@ def save_metrics(cv_model, output_path: str):
             flat[p.name] = v
         flat["f1"] = float(f1)
         results.append(flat)
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, 'w') as f:
-        json.dump(results, f, indent=2)
+    write_text_file(spark, [json.dumps(results, indent=2)], output_path)

@@ -46,7 +46,7 @@ if __name__ == "__main__":
         merged = merge_all_terms(top)
         print(f"Merged terms  : {len(merged)}")
 
-        write_output(top, merged, OUTPUT_RDD)
+        write_output(spark, top, merged, OUTPUT_RDD)
         print(f"Output written: {OUTPUT_RDD}")
 
         print("Task 1 completed.")

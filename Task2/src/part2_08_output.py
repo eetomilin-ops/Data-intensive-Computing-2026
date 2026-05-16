@@ -1,5 +1,5 @@
 # Extract selected terms from the fitted Part 2 pipeline and write output_ds.txt.
-import os
+from common import write_text_file
 
 # pipeline stage positions (order from part2_07_pipeline)
 _IDX_COUNT_VECTORIZER = 3
@@ -10,8 +10,5 @@ def extract_selected_terms(pipeline_model) -> list[str]:
     indices = pipeline_model.stages[_IDX_CHI_SELECTOR].selectedFeatures
     return [vocab[i] for i in indices]
 
-def save_terms(terms: list[str], output_path: str):
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, 'w', encoding='utf-8') as f:
-        for t in terms:
-            f.write(t + '\n')
+def save_terms(spark, terms: list[str], output_path: str):
+    write_text_file(spark, terms, output_path)
