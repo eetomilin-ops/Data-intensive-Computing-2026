@@ -1,19 +1,9 @@
 # Shared utilities (load stopwords, helpers)
-import json
-import re
-from typing import Any
+import re  # regex in tokenizer
 from pathlib import Path
 
 # JSON field names from Amazon review dataset
-FIELD_REVIEWER_ID = "reviewerID"
-FIELD_ASIN = "asin"
-FIELD_REVIEWER_NAME = "reviewerName"
-FIELD_HELPFUL = "helpful"
 FIELD_REVIEW_TEXT = "reviewText"
-FIELD_OVERALL = "overall"
-FIELD_SUMMARY = "summary"
-FIELD_UNIX_REVIEW_TIME = "unixReviewTime"
-FIELD_REVIEW_TIME = "reviewTime"
 FIELD_CATEGORY = "category"
 
 # tokenization pattern - same as Task 1
@@ -34,26 +24,14 @@ def create_spark_session():
     return builder.getOrCreate()
 
 def load_reviews_df(spark, path: str):
-    # macOS lacks Hadoop native libs -- read.json can fail with viewfs errors.
-    # Bypass Hadoop FileSystem by loading lines into driver then parallelize.
+    # Hadoop native libs fails on macOS - read.json () doesn't work
+    # workaround is to load lines using native open() 
+    # then directly push into driver context using parallelize.
     from settings import RUN_LOCAL
     if RUN_LOCAL:
         lines = open(path, 'r', encoding='utf-8').readlines()
         return spark.read.json(spark.sparkContext.parallelize(lines))
     return spark.read.json(path)
-
-def safe_parse_review(line: str) -> dict[str, Any] | None:
-    try:
-        return json.loads(line)
-    except (json.JSONDecodeError, ValueError):
-        return None
-
-def extract_category_text(review: dict[str, Any]) -> tuple[str, str] | None:
-    text = review.get(FIELD_REVIEW_TEXT)
-    cat = review.get(FIELD_CATEGORY)
-    if not text or not cat:
-        return None
-    return cat, text
 
 def tokenize_text(text: str) -> list[str]:
     tokens = re.split(TOKEN_DELIMITER_PATTERN, text)
