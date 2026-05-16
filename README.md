@@ -147,3 +147,11 @@ export HADOOP_STREAMING_JAR=/path/from/command/hadoop-streaming.jar
 ```
 
 - Do not use `hadoop-mapreduce-client-jobclient*.jar` as `HADOOP_STREAMING_JAR`; it fails with `ClassNotFoundException: -files`.
+
+## Task 2
+
+run in cluster RUN_LOCAL=false ./run_all.sh
+
+(!) set STOPWORDS_PATH, there's no cluster copy of stopwords.txt
+
+Upload file to your personal folder + set path or use default place in ./data

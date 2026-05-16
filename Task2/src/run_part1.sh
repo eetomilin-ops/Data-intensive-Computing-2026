@@ -22,6 +22,7 @@ export PYSPARK_DRIVER_PYTHON="$PYTHON"
 if [[ "$RUN_LOCAL" == "true" ]]; then
     "$PYTHON" part1_06_runner.py "$@"
 else
+    export HADOOP_CONF_DIR=/etc/hadoop/conf
     spark-submit part1_06_runner.py "$@"
 fi
 # clean up env var so it does not leak to subsequent runs

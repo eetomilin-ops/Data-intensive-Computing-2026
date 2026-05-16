@@ -21,6 +21,7 @@ export PYSPARK_DRIVER_PYTHON="$PYTHON"
 if [[ "$RUN_LOCAL" == "true" ]]; then
     "$PYTHON" part2_09_runner.py "$@"
 else
+    export HADOOP_CONF_DIR=/etc/hadoop/conf
     spark-submit part2_09_runner.py "$@"
 fi
 unset LOCAL_SPARK_RAM 2>/dev/null

@@ -44,13 +44,21 @@ SPARK_LOCAL_CONFIG = {
     "spark.sql.shuffle.partitions": "8",
 }
 
-# Spark configuration - cluster
+# YARN nodes must reach the driver -- bind to all interfaces, and advertise
+# the pod IP so AM can connect back.  hostname -i gives the internal pod IP.
+import subprocess
+_DRIVER_HOST = subprocess.run(["hostname", "-i"], capture_output=True, text=True).stdout.strip()
+
+# Spark configuration - cluster.  YARN container cap is 8192 MB.
+# 7g (7168 MB) + ~716 MB overhead = ~7884 MB fits within the limit.
 SPARK_CLUSTER_CONFIG = {
     "spark.master": "yarn",
     "spark.submit.deployMode": "client",
     "spark.driver.memory": "8g",
-    "spark.executor.memory": "8g",
-    "spark.executor.instances": "4",
+    "spark.driver.host": _DRIVER_HOST,
+    "spark.driver.bindAddress": "0.0.0.0",
+    "spark.executor.memory": "7g",
+    "spark.executor.instances": "2",
     "spark.sql.shuffle.partitions": "200",
 }
 
