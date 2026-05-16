@@ -5,7 +5,8 @@ from settings import RUN_LOCAL
 def load_reviews_rdd(spark, path: str):
     from common import FIELD_CATEGORY, FIELD_REVIEW_TEXT
 
-    # on local, read via Python to avoid Hadoop GlobFilter issues with [] in paths
+    # macOS lacks Hadoop native libs -- textFile can fail with viewfs errors.
+    # Bypass Hadoop FileSystem by loading lines into driver then parallelize.
     if RUN_LOCAL:
         lines = open(path, 'r', encoding='utf-8').readlines()
         rdd = spark.sparkContext.parallelize(lines)

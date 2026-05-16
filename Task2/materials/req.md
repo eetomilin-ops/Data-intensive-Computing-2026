@@ -389,11 +389,14 @@ param_grid = ParamGridBuilder() \
 
 ```
 Task2/
-├── .venv/                       # Virtual environment (ignored)
+├── .venv/                       # Virtual environment (Python 3.12, ignored)
 ├── .gitignore
 │
 ├── data/
-│   └── readme.md                # Local dev data location
+│   ├── readme.md                # Local dev data location
+│   ├── extract_sample.sh        # Pull 5k records from HDFS for local dev
+│   ├── reviews_devset_5k.json   # 5000-record local dev sample (gitignored)
+│   └── stopwords.txt            # Local copy (gitignored)
 │
 ├── materials/
 │   ├── Assignment_2_Instructions.pdf
@@ -401,42 +404,48 @@ Task2/
 │
 ├── src/
 │   ├── settings.py              # Paths, constants, Spark configs
-│   ├── common.py                # Shared utilities (load stopwords, helpers)
+│   ├── common.py                # Shared utilities (stopwords, tokenize, chi-square)
+│   ├── requirements.txt         # pyspark==4.1.1
+│   ├── readme.md
 │   │
-│   ├── part1_runner.py          # Part 1: Execute full RDD pipeline
-│   ├── part1_load.py            # Load JSON as RDD
-│   ├── part1_tokenize.py        # Tokenization + stopword filter (RDD ops)
-│   ├── part1_chi_square.py      # Chi-square calculation (RDD ops)
-│   ├── part1_aggregate.py       # Top-k selection and merge (RDD ops)
-│   ├── part1_output.py          # Format and save output_rdd.txt
+│   ├── part1_01_load.py         # Load JSON as RDD of (category, reviewText)
+│   ├── part1_02_tokenize.py     # Tokenization + stopword filter + dedup (RDD)
+│   ├── part1_03_chi_square.py   # Chi-square calculation via single reduceByKey pass
+│   ├── part1_04_aggregate.py    # Top-k selection per category + merge
+│   ├── part1_05_output.py       # Format and save output_rdd.txt
+│   ├── part1_06_runner.py       # Part 1 orchestrator (IMPL)
 │   │
-│   ├── part2_runner.py          # Part 2: Execute DataFrame pipeline
-│   ├── part2_load.py            # Load JSON as DataFrame
-│   ├── part2_tokenizer.py       # Tokenizer transformer setup
-│   ├── part2_stopwords.py       # StopWordsRemover transformer setup
-│   ├── part2_vectorizer.py      # CountVectorizer/HashingTF transformer
-│   ├── part2_idf.py             # IDF estimator setup
-│   ├── part2_chi_selector.py    # ChiSqSelector transformer setup
-│   ├── part2_pipeline.py        # Build and fit ML Pipeline
-│   ├── part2_output.py          # Extract terms, save output_ds.txt
+│   ├── part2_01_load.py         # Load JSON as DataFrame (stub)
+│   ├── part2_02_tokenizer.py    # RegexTokenizer setup (stub)
+│   ├── part2_03_stopwords.py    # StopWordsRemover setup (stub)
+│   ├── part2_04_vectorizer.py   # CountVectorizer setup (stub)
+│   ├── part2_05_idf.py          # IDF estimator setup (stub)
+│   ├── part2_06_chi_selector.py # ChiSqSelector setup (stub)
+│   ├── part2_07_pipeline.py     # Build and fit ML Pipeline (stub)
+│   ├── part2_08_output.py       # Extract terms, save output_ds.txt (stub)
+│   ├── part2_09_runner.py       # Part 2 orchestrator (stub)
 │   │
-│   ├── part3_runner.py          # Part 3: Execute classification pipeline
-│   ├── part3_data_split.py      # Train/validation/test split
-│   ├── part3_normalizer.py      # Normalizer transformer setup
-│   ├── part3_svm_estimator.py   # LinearSVC estimator setup
-│   ├── part3_pipeline.py        # Extend Part 2 pipeline with classifier
-│   ├── part3_grid_builder.py    # ParamGridBuilder configuration
-│   ├── part3_cross_validator.py # CrossValidator setup and execution
-│   ├── part3_evaluator.py       # MulticlassClassificationEvaluator
-│   └── part3_output.py          # Save metrics, F1 scores, comparison
+│   ├── part3_01_data_split.py   # Train/validation/test split (stub)
+│   ├── part3_02_normalizer.py   # L2 Normalizer setup (stub)
+│   ├── part3_03_svm_estimator.py# LinearSVC + OneVsRest setup (stub)
+│   ├── part3_04_pipeline.py     # Extend part2 pipeline with classifier (stub)
+│   ├── part3_05_grid_builder.py # ParamGridBuilder config (stub)
+│   ├── part3_06_cross_validator.py# CrossValidator setup (stub)
+│   ├── part3_07_evaluator.py    # MulticlassClassificationEvaluator (stub)
+│   ├── part3_08_output.py       # Save metrics and comparison (stub)
+│   ├── part3_09_runner.py       # Part 3 orchestrator (stub)
 │   │
-│   └── run_all.py               # Master script: runs all 3 parts sequentially
+│   ├── run_all.py               # Master Python orchestrator (stub)
+│   ├── run_all.sh               # Shell wrapper: auto-detect local/cluster
+│   ├── run_part1.sh             # Shell wrapper for part 1
+│   ├── run_part2.sh             # Shell wrapper for part 2
+│   └── run_part3.sh             # Shell wrapper for part 3
 │
 ├── output/
-│   ├── output_rdd.txt           # Part 1 results
-│   ├── output_ds.txt            # Part 2 results
-│   ├── part3_metrics.json       # Part 3 grid search results
-│   └── part3_comparison.txt     # Part 3 performance comparison
+│   ├── output_rdd.txt           # Part 1 results (generated)
+│   ├── output_ds.txt            # Part 2 results (pending)
+│   ├── part3_metrics.json       # Part 3 grid search results (pending)
+│   └── part3_comparison.txt     # Part 3 performance comparison (pending)
 │
 └── presentation/
     └── presentation.md          # Report draft
@@ -519,6 +528,31 @@ RUN_LOCAL=false ./src/run_part1.sh
 ```
 
 **Packaging-ready:** Common pattern for distributable Python projects - abstracts runtime details from users.
+
+## 2026-05-16: Path audit and cleanup
+
+### .vscode visibility
+- `.vscode/settings.json` had `"**/.venv": true` in `files.exclude`, hiding venv in explorer.
+- Removed the exclusion; `.venv` now visible in VSCode file tree.
+
+### Python version
+- Old `.venv` was Python 3.14.4 -- mismatched with target 3.12.x.
+- Recreated with `/usr/local/bin/python3.12` (3.12.13).
+- Reinstalled `pyspark==4.1.1` and `PyPDF2` for PDF extraction.
+
+### Path simplification
+- No `[]` characters exist in any file or directory path (confirmed via `find`).
+- The `RUN_LOCAL` branch in `part1_01_load.py` and `common.py` `load_reviews_df`
+  exists because macOS lacks Hadoop native libraries -- Spark's `textFile`/`read.json`
+  fail with `viewfs` FileSystem provider errors on macOS. The `parallelize(lines)`
+  approach bypasses Hadoop entirely for local development.
+- Updated comments in both loaders to reflect the actual reason (was incorrectly
+  attributed to `[]` in paths breaking Hadoop GlobFilter).
+
+### Shell scripts location
+- `run_all.sh`, `run_part1.sh`, `run_part2.sh`, `run_part3.sh` live in `src/`,
+  not at `Task2/` root. They `cd "$(dirname "$0")"` so relative references work.
+  The project structure diagram in this file was updated to reflect actual layout.
 
 ### Common utilities
 Updated `common.py` with Task1-aligned constants and functions:

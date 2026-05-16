@@ -34,8 +34,8 @@ def create_spark_session():
     return builder.getOrCreate()
 
 def load_reviews_df(spark, path: str):
-    # on HDFS pass path directly; locally read via Python to avoid Hadoop
-    # GlobFilter issues with [] or other special chars in the file path
+    # macOS lacks Hadoop native libs -- read.json can fail with viewfs errors.
+    # Bypass Hadoop FileSystem by loading lines into driver then parallelize.
     from settings import RUN_LOCAL
     if RUN_LOCAL:
         lines = open(path, 'r', encoding='utf-8').readlines()
