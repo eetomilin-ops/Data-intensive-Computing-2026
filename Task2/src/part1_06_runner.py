@@ -47,6 +47,6 @@ if __name__ == "__main__":
         write_output(top, merged, OUTPUT_RDD)
         print(f"Output written: {OUTPUT_RDD}")
 
-        print("Part 1 done.")
+        print("Task 1 completed.")
     finally:
         spark.stop()

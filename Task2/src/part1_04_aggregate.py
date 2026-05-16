@@ -3,7 +3,7 @@
 def select_top_k_per_category(chi_square_rdd, k: int) -> dict[str, list[tuple[str, float]]]:
     # group (cat, term, score) by category, sort by score desc then term asc, take top k
     def top_k(it, k):
-        # heap would be more memory-friendly, but k=75 is small enough
+        # heap would use less mem, but I believe k=75 is small enough
         sorted_items = sorted(it, key=lambda x: (-x[1], x[0]))
         return sorted_items[:k]
 

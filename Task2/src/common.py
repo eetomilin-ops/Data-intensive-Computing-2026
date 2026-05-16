@@ -14,6 +14,15 @@ def load_stopwords(stopwords_path: str | Path) -> set[str]:
     with open(stopwords_path, 'r', encoding='utf-8') as f:
         return {line.strip().lower() for line in f if line.strip()}
 
+def _load_text_rdd(spark, path: str):
+    # macOS lacks Hadoop native libs -- textFile/read.json fail with viewfs errors.
+    # Bypass Hadoop FileSystem by reading into the driver, then parallelize.
+    from settings import RUN_LOCAL
+    if RUN_LOCAL:
+        lines = open(path, 'r', encoding='utf-8').readlines()
+        return spark.sparkContext.parallelize(lines)
+    return spark.sparkContext.textFile(path)
+
 def create_spark_session():
     from pyspark.sql import SparkSession
     from settings import SPARK_APP_NAME, SPARK_CONFIG
@@ -24,14 +33,8 @@ def create_spark_session():
     return builder.getOrCreate()
 
 def load_reviews_df(spark, path: str):
-    # Hadoop native libs fails on macOS - read.json () doesn't work
-    # workaround is to load lines using native open() 
-    # then directly push into driver context using parallelize.
-    from settings import RUN_LOCAL
-    if RUN_LOCAL:
-        lines = open(path, 'r', encoding='utf-8').readlines()
-        return spark.read.json(spark.sparkContext.parallelize(lines))
-    return spark.read.json(path)
+    rdd = _load_text_rdd(spark, path)
+    return spark.read.json(rdd)
 
 def tokenize_text(text: str) -> list[str]:
     tokens = re.split(TOKEN_DELIMITER_PATTERN, text)
