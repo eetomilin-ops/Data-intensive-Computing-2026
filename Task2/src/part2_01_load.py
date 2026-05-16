@@ -1,5 +1,3 @@
-# Load JSON as DataFrame
-
-def load_reviews_df(spark, path: str):
-    # TODO: load JSON into DataFrame
-    pass
+# Load JSON review dataset as a DataFrame with all original columns.
+# Delegates to the shared loader in common.py.
+from common import load_reviews_df  # noqa: F401 -- re-export
