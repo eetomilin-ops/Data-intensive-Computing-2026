@@ -24,3 +24,5 @@ if [[ "$RUN_LOCAL" == "true" ]]; then
 else
     spark-submit part1_06_runner.py "$@"
 fi
+# clean up env var so it does not leak to subsequent runs
+unset LOCAL_SPARK_RAM 2>/dev/null

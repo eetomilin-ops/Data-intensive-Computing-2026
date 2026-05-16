@@ -23,3 +23,4 @@ if [[ "$RUN_LOCAL" == "true" ]]; then
 else
     spark-submit part3_09_runner.py "$@"
 fi
+unset LOCAL_SPARK_RAM 2>/dev/null

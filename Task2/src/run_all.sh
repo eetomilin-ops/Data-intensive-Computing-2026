@@ -28,3 +28,4 @@ if [[ "$RUN_LOCAL" == "true" ]]; then
 else
     spark-submit run_all.py "$@"
 fi
+unset LOCAL_SPARK_RAM 2>/dev/null

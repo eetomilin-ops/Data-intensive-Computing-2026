@@ -49,8 +49,12 @@ if __name__ == "__main__":
         evaluator   = create_evaluator()
         cv          = create_cross_validator(pipeline, param_grid, evaluator)
 
-        print(f"Grid size : {len(param_grid)} configs, 2-fold CV")
+        n_fits = len(param_grid) * 2  # 2 folds
+        print(f"Grid size : {len(param_grid)} configs, 2-fold CV ({n_fits} fits)")
+        print(f"Spark UI  : http://localhost:4040  (track stages/jobs there)")
+        print("Fitting...", flush=True)
         cv_model = cv.fit(train_val)
+        print("done.")
 
         best_f1 = max(cv_model.avgMetrics)
         print(f"Best F1   : {best_f1:.4f}")

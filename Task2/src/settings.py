@@ -8,6 +8,11 @@ from pathlib import Path
 # runtime environment
 RUN_LOCAL = os.getenv("RUN_LOCAL", "true").lower() == "true"
 
+# local driver+executor memory, settable per-run. 4g default, bump to 8g for
+# heavier workloads (Part 3 grid search). Cluster uses fixed 8g.
+#   LOCAL_SPARK_RAM=8g ./run_part3.sh
+LOCAL_RAM = os.getenv("LOCAL_SPARK_RAM", "8g")
+
 # base directories
 BASE_DIR = Path(__file__).parent.parent
 DATA_DIR = BASE_DIR / "data"
@@ -34,8 +39,8 @@ OUTPUT_COMPARISON = str(OUTPUT_DIR / "part3_comparison.txt")
 # Spark configuration - local
 SPARK_LOCAL_CONFIG = {
     "spark.master": "local[*]",
-    "spark.driver.memory": "4g",
-    "spark.executor.memory": "4g",
+    "spark.driver.memory": LOCAL_RAM,
+    "spark.executor.memory": LOCAL_RAM,
     "spark.sql.shuffle.partitions": "8",
 }
 
