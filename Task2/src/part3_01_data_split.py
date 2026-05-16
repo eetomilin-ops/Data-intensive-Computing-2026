@@ -1,5 +1,10 @@
-# Train/validation/test split
+# Reproducible train/validation/test split.
+from pyspark.sql import DataFrame
 
-def split_data(df, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, seed=42):
-    # TODO: split dataset reproducibly
-    pass
+def split_data(
+    df: DataFrame,
+    weights: tuple[float, float, float] = (0.7, 0.15, 0.15),
+    seed: int = 42,
+):
+    splits = df.randomSplit(list(weights), seed=seed)
+    return splits[0], splits[1], splits[2]
