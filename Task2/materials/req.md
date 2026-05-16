@@ -554,40 +554,32 @@ RUN_LOCAL=false ./src/run_part1.sh
   not at `Task2/` root. They `cd "$(dirname "$0")"` so relative references work.
   The project structure diagram in this file was updated to reflect actual layout.
 
-### Common utilities
-Updated `common.py` with Task1-aligned constants and functions:
+### Common utilities (current)
+`common.py` provides:
+- `load_stopwords()` -- load stopword set from file
+- `_load_text_rdd()` -- single point for RUN_LOCAL file-loading workaround (macOS Hadoop compat)
+- `create_spark_session()` -- environment-aware SparkSession via settings.SPARK_CONFIG
+- `load_reviews_df()` -- DataFrame loader delegating to `_load_text_rdd`
+- `tokenize_text()` / `filter_tokens()` -- Task 1-compatible tokenization
+- `compute_chi_square()` -- chi-square on 2x2 document-presence contingency table
+- `FIELD_REVIEW_TEXT`, `FIELD_CATEGORY` -- field name constants
 
-**Field name constants:**
-- All JSON field names from Amazon review dataset as constants
-- Makes code more maintainable and refactor-safe
+Dead code removed 2026-05-16: `safe_parse_review`, `extract_category_text`, 6 unused `FIELD_*` constants.
 
-**Tokenization constants:**
-- `TOKEN_DELIMITER_PATTERN` - Same regex as Task1 for consistency
-- `MIN_TOKEN_LENGTH = 2` - Filter single-character tokens
+### PySpark 4.1.1 Python version mismatch (2026-05-16)
+- PySpark 4.1.1 bundles Python 3.14 workers inside its zip, but driver is 3.12.
+- Without `PYSPARK_PYTHON` set, workers fail with `PYTHON_VERSION_MISMATCH`.
+- All `run_*.sh` scripts now auto-detect the venv Python and export `PYSPARK_PYTHON`
+  and `PYSPARK_DRIVER_PYTHON` to force workers to use the same 3.12 interpreter.
+- On the LBD cluster (Ubuntu 24.04, Python 3.12), this should not be needed --
+  the cluster PySpark is built against the system Python. The workaround is for
+  local macOS development with pip-installed pyspark.
 
-**Functions:**
-- `load_stopwords()` - Load stopword set from file
-- `create_spark_session()` - Uses settings.SPARK_CONFIG for environment-aware session
-- `safe_parse_review()` - JSON parsing with error handling
-- `extract_category_text()` - Extract (category, reviewText) tuple
-- `tokenize_text()` - Split text using delimiter pattern
-- `filter_tokens()` - Remove stopwords and short tokens
-- `compute_chi_square()` - Chi-square statistic on 2x2 contingency table (document-presence)
-
-All utilities adapted from Task1 for compatibility and reuse existing logic.
-
-### Sample data extraction
-Created `data/extract_sample.sh` for cluster execution:
-
-**Purpose:** Extract 5000-record sample from cluster HDFS for local development
-
-**Features:**
-- Reads from `hdfs:///dic_shared/amazon-reviews/full/reviews_devset.json`
-- Outputs `reviews_devset_5k.json` (5000 records)
-- Copies `stopwords.txt` from Task1
-- Validates JSON format
-- Shows sample record for verification
-- Provides scp download commands
+### Part 1 status (2026-05-16)
+- Full RDD pipeline runs successfully on local 5k devset sample.
+- Output: 25,990 scored (cat, term, chi2) pairs, 3 categories, 174 merged terms.
+- `output_rdd.txt` matches Task 1 format: one alphabetical category line with top 75
+  `term:score` entries per category, plus one merged alphabetical dictionary line.
 
 **Usage on cluster:**
 ```bash
