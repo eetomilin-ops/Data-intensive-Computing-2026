@@ -14,6 +14,6 @@ def create_cross_validator(
         estimatorParamMaps=param_grid,
         evaluator=evaluator,
         numFolds=num_folds,
-        parallelism=2,
+        parallelism=2,  # adjust for multi-cores. it's for my laptop. If set too much spark begins to dump -> slows
         seed=seed,
     )
