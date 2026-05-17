@@ -150,7 +150,6 @@ export HADOOP_STREAMING_JAR=/path/from/command/hadoop-streaming.jar
 
 ## Task 2
 
-
 (!) set STOPWORDS_PATH, there's no cluster copy of stopwords.txt
 
 Upload file to your personal folder + set path or use default place in ./data
