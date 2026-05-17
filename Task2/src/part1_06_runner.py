@@ -1,25 +1,16 @@
 # Part 1: RDD-based chi-square feature selection, matching Task 1 output format
 import sys
 from pathlib import Path
-
 sys.path.insert(0, str(Path(__file__).parent))
 
 from common import create_spark_session, load_stopwords
-from settings import DATASET_PATH, STOPWORDS_PATH, OUTPUT_RDD, TOP_TERMS_PER_CATEGORY, RUN_LOCAL
+from settings import DATASET_PATH, STOPWORDS_PATH, OUTPUT_RDD, TOP_TERMS_PER_CATEGORY
 
 if __name__ == "__main__":
     spark = create_spark_session()
     try:
         sc = spark.sparkContext
         sc.setLogLevel('WARN')
-
-        # ship source modules to workers so flatMap/map lambdas can import them.
-        # Not needed in local mode -- all code runs in the driver process.
-        if not RUN_LOCAL:
-            src_dir = Path(__file__).parent
-            for mod in ['common.py', 'part1_03_chi_square.py', 'part1_02_tokenize.py',
-                        'part1_01_load.py', 'part1_04_aggregate.py', 'part1_05_output.py']:
-                sc.addPyFile(str(src_dir / mod))
 
         from part1_01_load import load_reviews_rdd
         from part1_02_tokenize import tokenize_document
