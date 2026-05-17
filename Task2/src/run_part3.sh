@@ -15,13 +15,19 @@ fi
 RUN_LOCAL=${RUN_LOCAL:-true}
 
 # force worker and driver to use the same Python (PySpark 4.1.1 bundles 3.14)
-export PYSPARK_PYTHON="$PYTHON"
-export PYSPARK_DRIVER_PYTHON="$PYTHON"
+# only needed on macOS; cluster uses system Python 3.12 which matches Spark
 
 if [[ "$RUN_LOCAL" == "true" ]]; then
+    export PYSPARK_PYTHON="$PYTHON"
+    export PYSPARK_DRIVER_PYTHON="$PYTHON"
     "$PYTHON" part3_09_runner.py "$@"
 else
     export HADOOP_CONF_DIR=/etc/hadoop/conf
-    spark-submit --master yarn --deploy-mode cluster part3_09_runner.py "$@"
+    PY_FILES=$(ls "$SCRIPT_DIR"/*.py | tr '\n' ',' | sed 's/,$//')
+    spark-submit --master yarn --deploy-mode cluster \
+        --conf spark.yarn.appMasterEnv.RUN_LOCAL="$RUN_LOCAL" \
+        --py-files "$PY_FILES" \
+        --files "$SCRIPT_DIR/../data/stopwords.txt" \
+        part3_09_runner.py "$@"
 fi
 unset LOCAL_SPARK_RAM 2>/dev/null

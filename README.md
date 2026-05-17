@@ -150,8 +150,14 @@ export HADOOP_STREAMING_JAR=/path/from/command/hadoop-streaming.jar
 
 ## Task 2
 
-run in cluster RUN_LOCAL=false ./run_all.sh
 
 (!) set STOPWORDS_PATH, there's no cluster copy of stopwords.txt
 
 Upload file to your personal folder + set path or use default place in ./data
+
+# run
+RUN_LOCAL=false ./src/run_all.sh
+# retrieve outputs from HDFS after each part or at end
+hdfs dfs -getmerge /user/<YOUR_USERNAME>/DIC_Task2/output/output_rdd.txt output_rdd.txt
+hdfs dfs -getmerge /user/<YOUR_USERNAME>/DIC_Task2/output/output_ds.txt output_ds.txt
+hdfs dfs -getmerge /user/<YOUR_USERNAME>/DIC_Task2/output/part3_metrics.json part3_metrics.json

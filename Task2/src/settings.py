@@ -28,7 +28,7 @@ HDFS_DEVSET = "/dic_shared/amazon-reviews/full/reviews_devset.json"        # ~58
 
 # active paths
 DATASET_PATH = str(LOCAL_DEVSET.resolve()) if RUN_LOCAL else HDFS_DEVSET
-STOPWORDS_PATH = str(LOCAL_STOPWORDS.resolve()) if RUN_LOCAL else str(LOCAL_STOPWORDS)
+STOPWORDS_PATH = str(LOCAL_STOPWORDS.resolve()) if RUN_LOCAL else "stopwords.txt"
 
 # Output paths -- local filesystem for dev, HDFS for cluster (driver on YARN node)
 HDFS_OUTPUT_DIR = "/user/e12533692/DIC_Task2/output"
