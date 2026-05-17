@@ -445,90 +445,67 @@ Task2/
 
 ## Global pipeline -- component reuse across parts
 
-```plantuml
-@startuml
-skinparam componentStyle rectangle
+```mermaid
+flowchart LR
+    subgraph shared["common.py + settings.py"]
+        SW["load_stopwords"]
+        TOK["tokenize_text / filter_tokens"]
+        CHI2["compute_chi_square"]
+        WRITE["write_text_file"]
+        CONF["paths, configs, RUN_LOCAL"]
+    end
 
-[load_stopwords] as SW
-[tokenize] as TOK
-[stopword filter] as FILT
-together {
-  [common.py]
-  [settings.py]
-}
+    subgraph P1["Part 1 (RDD)"]
+        P1L["load_reviews_rdd"] --> P1T["tokenize + dedup per doc"]
+        P1T --> CNT["emit_counters flatMap"]
+        CNT --> RED["reduceByKey"]
+        RED --> SCORE["compute_chi_square"]
+        SCORE --> TOPK["select_top_k per category"]
+        TOPK --> MERGE["merge_all_terms"]
+        MERGE --> P1OUT["write_output"]
+    end
 
-package "Part 1 (RDD)" {
-  [load_reviews_rdd] as P1LOAD
-  [tokenize + dedup] as P1TOK
-  [emit_counters] as CNT
-  [reduceByKey] as RED
-  [compute_chi_square] as CHI2
-  [select_top_k] as TOPK
-  [merge_all_terms] as MERGE
-  [write_output] as P1OUT
-}
+    subgraph P2["Part 2 (DataFrame)"]
+        P2L["load_reviews_df"] --> REGEX["RegexTokenizer"]
+        REGEX --> SWREM["StopWordsRemover"]
+        SWREM --> CV["CountVectorizer"]
+        CV --> IDF["IDF"]
+        IDF --> CHISEL["ChiSqSelector"]
+        CHISEL --> EXT["extract_selected_terms"]
+        EXT --> P2OUT["save_terms"]
+    end
 
-package "Part 2 (DataFrame)" {
-  [load_reviews_df] as P2LOAD
-  [RegexTokenizer] as REGEX
-  [StopWordsRemover] as SWREM
-  [CountVectorizer] as CV
-  [IDF] as IDF
-  [ChiSqSelector] as CHISEL
-  [extract_selected_terms] as EXT
-  [save_terms] as P2OUT
-}
+    subgraph P3["Part 3 (SVM)"]
+        CHISEL --> NORM["Normalizer L2"]
+        SPLIT["split_data"] --> NORM
+        NORM --> SVM["OneVsRest(LinearSVC)"]
+        GRID["ParamGridBuilder"] --> CVAL["CrossValidator"]
+        SVM --> CVAL
+        CVAL --> P3OUT["save_metrics"]
+    end
 
-package "Part 3 (SVM)" {
-  [split_data] as SPLIT
-  [Normalizer (L2)] as NORM
-  [OneVsRest(LinearSVC)] as SVM
-  [ParamGridBuilder] as GRID
-  [CrossValidator] as CVAL
-  [save_metrics] as P3OUT
-}
+    SW -.-> P1T
+    SW -.-> SWREM
+    TOK -.-> P1T
+    TOK -.-> REGEX
+    CHI2 -.-> SCORE
+    CHI2 -.-> CHISEL
+    WRITE -.-> P1OUT
+    WRITE -.-> P2OUT
+    WRITE -.-> P3OUT
+    CONF -.-> P1L
+    CONF -.-> P2L
+    CONF -.-> P3OUT
 
-'reuse arrows
-SW --> P1TOK
-SW --> SWREM
-TOK --> FILT
-FILT --> P1TOK
-FILT --> REGEX
-
-P1LOAD --> P1TOK
-P1TOK --> CNT
-CNT --> RED
-RED --> CHI2
-CHI2 --> TOPK
-TOPK --> MERGE
-MERGE --> P1OUT
-
-P2LOAD --> REGEX
-REGEX --> SWREM
-SWREM --> CV
-CV --> IDF
-IDF --> CHISEL
-CHISEL --> EXT
-EXT --> P2OUT
-
-CHISEL --> NORM
-SPLIT --> NORM
-NORM --> SVM
-GRID --> CVAL
-SVM --> CVAL
-CVAL --> P3OUT
-
-@enduml
+    P1OUT --> output1["output_rdd.txt"]
+    P2OUT --> output2["output_ds.txt"]
+    P3OUT --> output3["part3_metrics.json"]
 ```
 
-Components above the dashed line are shared across parts:
-- `common.py`: `load_stopwords`, `tokenize_text`, `filter_tokens`, `compute_chi_square`,
-  `_load_text_rdd`, `load_reviews_df`, `write_text_file`
-- `settings.py`: paths, Spark configs, `RUN_LOCAL`, `LOCAL_SPARK_RAM`, task parameters
-
-Part 1 uses its own RDD path but reuses the same tokenization and chi-square formula.
-Parts 2 and 3 share the full Spark ML pipeline up to `ChiSqSelector`.
-Part 3 extends Part 2 with classification stages.
+Dashed lines show reused components. `common.py` provides tokenization, stopwords,
+chi-square formula, file loading, and HDFS-aware output writing. `settings.py`
+provides paths and Spark configuration. Parts 2 and 3 share the full Spark ML
+pipeline up to ChiSqSelector. Part 3 extends it with classification stages.
 
 ---
 
