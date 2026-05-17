@@ -32,10 +32,14 @@ hdfs dfs -getmerge /user/<YOUR_USERNAME>/DIC_Task2/output/output_rdd.txt output_
 hdfs dfs -getmerge /user/<YOUR_USERNAME>/DIC_Task2/output/output_ds.txt output_ds.txt
 hdfs dfs -getmerge /user/<YOUR_USERNAME>/DIC_Task2/output/part3_metrics.json part3_metrics.json
 ```
+###  Long runs status checks
+Usually to track progress spark has fancy webpage, but seems its inaccessible for LBD *clustered* runs. To check its alive , observe spark heartbits will send them once a minute to shell. To check in the moment use grep. 
+```sh
+yarn application -list 2>/dev/null | grep e12533692 # where e12533692 is replaced by your user name
+```
+For *local* runs it's on *4040* port.
 
-
-
-
+### Project structure
 
 ```sh
 Task2/
@@ -92,9 +96,7 @@ Task2/
     └── presentation.md          # Report draft
 ```
 
-Target platform: LBD Hadoop cluster (12 nodes, Ubuntu 24.04, Spark 3.5.6,
-Python 3.12, Java 21). Dataset: Amazon Review Dataset 2014 development split
-(~58 MB, ~95k reviews).
+Datasets used: augmented (DEV) Amazon Review Dataset 2014 split (~58 MB, ~95k reviews) on HDFS (/dic_shared/amazon-reviews/full/reviews_devset.json). For local tests head of the same dataset (5k size) was pulled , see (\data\extract_sample.sh) 
 
 ---
 
@@ -157,8 +159,7 @@ token removal.
   MulticlassClassificationEvaluator   F1 score
 ```
 
-Part 1 uses a separate RDD-only path (single reduceByKey pass for all chi-square
-counters, collected to driver for scoring, top-75 heaps per category).
+Part 1 uses a separate RDD-only path (single reduceByKey pass for all chi-square counters, collected to driver for scoring, top-75 heaps per category).
 
 ### 3.2 Part 1 -- RDD chi-square
 

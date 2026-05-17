@@ -443,6 +443,93 @@ Task2/
 ```
 - Use development set for all deliverables (avoid full dataset to reduce cluster load)
 
+## Global pipeline -- component reuse across parts
+
+```plantuml
+@startuml
+skinparam componentStyle rectangle
+
+[load_stopwords] as SW
+[tokenize] as TOK
+[stopword filter] as FILT
+together {
+  [common.py]
+  [settings.py]
+}
+
+package "Part 1 (RDD)" {
+  [load_reviews_rdd] as P1LOAD
+  [tokenize + dedup] as P1TOK
+  [emit_counters] as CNT
+  [reduceByKey] as RED
+  [compute_chi_square] as CHI2
+  [select_top_k] as TOPK
+  [merge_all_terms] as MERGE
+  [write_output] as P1OUT
+}
+
+package "Part 2 (DataFrame)" {
+  [load_reviews_df] as P2LOAD
+  [RegexTokenizer] as REGEX
+  [StopWordsRemover] as SWREM
+  [CountVectorizer] as CV
+  [IDF] as IDF
+  [ChiSqSelector] as CHISEL
+  [extract_selected_terms] as EXT
+  [save_terms] as P2OUT
+}
+
+package "Part 3 (SVM)" {
+  [split_data] as SPLIT
+  [Normalizer (L2)] as NORM
+  [OneVsRest(LinearSVC)] as SVM
+  [ParamGridBuilder] as GRID
+  [CrossValidator] as CVAL
+  [save_metrics] as P3OUT
+}
+
+'reuse arrows
+SW --> P1TOK
+SW --> SWREM
+TOK --> FILT
+FILT --> P1TOK
+FILT --> REGEX
+
+P1LOAD --> P1TOK
+P1TOK --> CNT
+CNT --> RED
+RED --> CHI2
+CHI2 --> TOPK
+TOPK --> MERGE
+MERGE --> P1OUT
+
+P2LOAD --> REGEX
+REGEX --> SWREM
+SWREM --> CV
+CV --> IDF
+IDF --> CHISEL
+CHISEL --> EXT
+EXT --> P2OUT
+
+CHISEL --> NORM
+SPLIT --> NORM
+NORM --> SVM
+GRID --> CVAL
+SVM --> CVAL
+CVAL --> P3OUT
+
+@enduml
+```
+
+Components above the dashed line are shared across parts:
+- `common.py`: `load_stopwords`, `tokenize_text`, `filter_tokens`, `compute_chi_square`,
+  `_load_text_rdd`, `load_reviews_df`, `write_text_file`
+- `settings.py`: paths, Spark configs, `RUN_LOCAL`, `LOCAL_SPARK_RAM`, task parameters
+
+Part 1 uses its own RDD path but reuses the same tokenization and chi-square formula.
+Parts 2 and 3 share the full Spark ML pipeline up to `ChiSqSelector`.
+Part 3 extends Part 2 with classification stages.
+
 ---
 
 # Development log
