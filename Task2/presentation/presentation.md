@@ -33,7 +33,7 @@ hdfs dfs -getmerge /user/<YOUR_USERNAME>/DIC_Task2/output/output_ds.txt output_d
 hdfs dfs -getmerge /user/<YOUR_USERNAME>/DIC_Task2/output/part3_metrics.json part3_metrics.json
 ```
 ###  Long runs status checks
-Usually to track progress spark has fancy webpage, but seems its inaccessible for LBD *clustered* runs. To check its alive , observe spark heartbits will send them once a minute to shell. To check in the moment use grep. 
+Usually to track progress spark has fancy webpage, but seems its inaccessible for LBD *clustered* runs. To check its alive , observe spark heartbits will send them once half a minute to shell. To check in the moment use grep. 
 ```sh
 yarn application -list 2>/dev/null | grep e12533692 # where e12533692 is replaced by your user name
 ```
@@ -102,8 +102,7 @@ Datasets used: augmented (DEV) Amazon Review Dataset 2014 split (~58 MB, ~95k re
 
 ## 2. Problem Overview
 
-Three tasks share a common preprocessing pipeline but differ in implementation
-approach and end goal:
+Three tasks share a common preprocessing pipeline but differ in implementation approach and end goal:
 
 - **Part 1**: replicate Assignment 1 chi-square term selection using RDD
   transformations. Output top-75 terms per product category and a merged
@@ -128,60 +127,90 @@ token removal.
 
 ### 3.1 Pipeline overview
 
-```
-  reviews_devset.json (HDFS)
-       |
-       v
-  StringIndexer          category -> numeric label
-       |
-       v
-  RegexTokenizer         split on delimiters, casefold
-       |
-       v
-  StopWordsRemover       remove stopwords + 1-char tokens
-       |
-       v
-  CountVectorizer        term-document count matrix
-       |
-       v
-  IDF                    TF-IDF weighting
-       |
-       v
-  ChiSqSelector          top-k terms by chi-square (Part 2 output)
-       |
-       v
-  Normalizer             L2 vector normalization
-       |
-       v
-  OneVsRest(LinearSVC)   multi-class SVM
-       |
-       v
-  MulticlassClassificationEvaluator   F1 score
+```mermaid
+flowchart TD
+    subgraph shared["common.py + settings.py"]
+        SW["load_stopwords"]
+        TOK["tokenize_text / filter_tokens"]
+        CHI2["compute_chi_square"]
+        WRITE["write_text_file"]
+        CONF["paths, configs, RUN_LOCAL"]
+    end
+
+    subgraph P1["Part 1 (RDD)"]
+        P1L["load_reviews_rdd"] --> P1T["tokenize + dedup per doc"]
+        P1T --> CNT["emit_counters flatMap"]
+        CNT --> RED["reduceByKey"]
+        RED --> SCORE["compute_chi_square"]
+        SCORE --> TOPK["select_top_k per category"]
+        TOPK --> MERGE["merge_all_terms"]
+        MERGE --> P1OUT["write_output"]
+    end
+
+    subgraph P2["Part 2 (DataFrame)"]
+        P2L["load_reviews_df"] --> REGEX["RegexTokenizer"]
+        REGEX --> SWREM["StopWordsRemover"]
+        SWREM --> CV["CountVectorizer"]
+        CV --> IDF["IDF"]
+        IDF --> CHISEL["ChiSqSelector"]
+        CHISEL --> EXT["extract_selected_terms"]
+        EXT --> P2OUT["save_terms"]
+    end
+
+    subgraph P3["Part 3 (SVM)"]
+        CHISEL --> NORM["Normalizer L2"]
+        SPLIT["split_data"] --> NORM
+        NORM --> SVM["OneVsRest(LinearSVC)"]
+        GRID["ParamGridBuilder"] --> CVAL["CrossValidator"]
+        SVM --> CVAL
+        CVAL --> P3OUT["save_metrics"]
+    end
+
+    SW -.-> P1T
+    SW -.-> SWREM
+    TOK -.-> P1T
+    TOK -.-> REGEX
+    CHI2 -.-> SCORE
+    CHI2 -.-> CHISEL
+    WRITE -.-> P1OUT
+    WRITE -.-> P2OUT
+    WRITE -.-> P3OUT
+    CONF -.-> P1L
+    CONF -.-> P2L
+    CONF -.-> P3OUT
+
+    P1OUT --> output1["output_rdd.txt"]
+    P2OUT --> output2["output_ds.txt"]
+    P3OUT --> output3["part3_metrics.json"]
 ```
 
 Part 1 uses a separate RDD-only path (single reduceByKey pass for all chi-square counters, collected to driver for scoring, top-75 heaps per category).
 
 ### 3.2 Part 1 -- RDD chi-square
 
-Document-presence semantics: terms deduplicated per review before counting.
-Counters emitted as `((prefix, key), 1)` tuples in a single flatMap pass:
+Document-presence semantics: terms deduplicated per review before counting. Counters emitted as `((prefix, key), 1)` tuples in a single flatMap pass:
 
 - `("__N__", "__N__")` -- total documents
 - `("__NC__", category)` -- documents per category
 - `("__NT__", term)` -- documents containing term
 - `(category, term)` -- documents in category with term
 
-One `reduceByKey` aggregates all four counter types. Chi-square computed on the
-2x2 contingency table, then top-75 per category selected via sort + limit.
+One `reduceByKey` aggregates all four counter types. Chi-square computed on the 2x2 contingency table, then top-75 per category selected via sort + limit.
 
-### 3.3 Part 2 -- Spark ML pipeline
+### 3.3 Part 2 Spark ML pipeline
 
-All five stages use Spark ML built-in transformers/estimators. The pipeline
-is defined once and fit on the full review DataFrame. Terms are extracted from
-the fitted ChiSqSelectorModel by mapping `selectedFeatures` indices to
-CountVectorizerModel vocabulary.
+Five feature stages, plus a StringIndexer for the label column, chained into a single `pyspark.ml.pipeline` and fit on the review DataFrame. Terms are extracted from the fitted ChiSqSelectorModel by mapping `selectedFeatures` indices to CountVectorizerModel vocabulary.
 
-### 3.4 Part 3 -- Classification
+| Stage | Spark class | Type | Comment |
+|---|---|---|---|
+| Label encoding | `StringIndexer` | Estimator | Maps category strings to numeric labels (0,1,2...) needed by ChiSqSelector and SVM |
+| Tokenization | `RegexTokenizer` | Transformer | Splits `reviewText` on the Task 1 delimiter pattern, gaps mode, casefolds |
+| Stopword removal | `StopWordsRemover` | Transformer | Drops 591 stopwords + single lowercase letters `a`-`z` (1-char filter) |
+| Term-frequency vectors | `CountVectorizer` | Estimator | Builds vocabulary from all reviews, outputs sparse term-count vectors per document |
+| TF-IDF weighting | `IDF` | Estimator | Down-weights terms that appear in many documents, up-weights rare discriminative terms |
+| Feature selection | `ChiSqSelector` | Transformer | Selects top 2000 terms by chi-square score against the category label |
+
+### 3.4 Part 3 Classification
 
 Pipeline extended with L2 Normalizer and OneVsRest(LinearSVC). Grid search
 parameters:
@@ -212,21 +241,50 @@ Jupyter pod or macOS.
 
 ### 4.1 Part 1 -- RDD output
 
-Generated `output_rdd.txt` from the 5k local devset sample:
+Generated `output_rdd.txt` from the full cluster devset (~95k reviews, 58 MB):
 
-- 3 categories (Apps_for_Android, Book, Patio_Lawn_and_Garde)
-- 25,990 scored (category, term, chi2) pairs
-- 174 unique terms in merged alphabetical dictionary
+- 22 product categories, each with 75 `term:chi2` entries
+- 1,464 unique terms in the merged alphabetical dictionary
+- Top term per category selected by document-presence chi-square
 
 Format: `<category> <term>:<score> ...` (75 terms per line) + merged dictionary line.
-Matches Assignment 1 output specification.
+Matches Assignment 1 output specification. The 22 categories cover the full product
+range of the devset, compared to 3 categories in the 5k local sample.
 
 ### 4.2 Part 2 -- Feature selection
 
-2000 terms selected by chi-square from the full devset. Terms ordered by
-chi-square score (most discriminative first). Top terms: `great`, `good`,
-`love`, `time`, `play` -- consistent with review-domain discriminative language.
+2000 terms selected by chi-square from the full devset via the Spark ML pipeline.
+Terms ordered by chi-square score (most discriminative first). Output written to
+`output_ds.txt`, one term per line.
 
+Top-10 terms: `great`, `good`, `love`, `time`, `work`, `recommend`, `back`,
+`easy`, `make`, `bought` — consistent with review-domain language spanning
+multiple categories.
+### 4.2.1 Comparison with Assignment 1
+
+| Metric | Task 1 (mrjob) | Part 1 (Spark RDD) | Part 2 (Spark ML) |
+|---|---|---|---|
+| Categories | 22 | 22 | -- |
+| Merged dict terms | 1,418 | 1,464 | -- |
+| Top-k per category | 75 | 75 | -- |
+| Top-k overall | -- | -- | 2,000 |
+| Chi-square semantics | term-frequency | document-presence | document-presence (built-in) |
+| Overlap with Task 1 | -- | 1,177 shared (69.0%) | 763 shared (38.1%) |
+| Unique to this run | -- | 287 | 1,237 |
+
+Part 1 and Task 1 compute the same chi-square metric on the same dataset but
+differ in term counting semantics: Task 1 used raw term-frequency (each occurrence
+counts), while Part 1 deduplicates terms per review (document-presence), matching
+the assignment specification. This explains the 69.0% overlap -- highly
+discriminative terms are identified by both methods, but terms that appear
+frequently within a single review shift in rank between implementations.
+
+Part 2 uses Spark ML's built-in ChiSqSelector on TF-IDF weighted vectors rather
+than raw counts, and selects terms globally (2000 overall, not per-category).
+The 38.1% overlap with Task 1 is expected: per-category top-75 selection favors
+category-specific jargon, while global chi-square picks terms discriminative
+across all categories simultaneously. Both approaches surface review-domain
+language (`great`, `good`, `love` appear in all three outputs).
 ### 4.3 Part 3 -- Grid search results
 
 | numTopFeatures | regParam | standardization | maxIter | F1 (val)   |
@@ -257,12 +315,5 @@ standardization=True, maxIter=50.
 
 ## 5. Conclusions
 
-Spark ML pipeline successfully selects discriminative review terms and trains
-a multi-class SVM classifier achieving 87% F1 on the development set.
-Feature selection (chi-square at 2000 terms) and proper regularization (0.1)
-are key to performance. The pipeline is reproducible and parameterized for
-both local development and YARN cluster execution.
-
-Future work: extend to the full 58 GB dataset, explore deep learning
-classifiers available in Spark ML, or add n-gram features to the current
-unigram pipeline.
+Spark ML pipeline successfully selects discriminative review terms and trains a multi-class SVM classifier achieving 87% F1 on the development set.
+Feature selection (chi-square at 2000 terms) and proper regularization (0.1) are key to performance.
