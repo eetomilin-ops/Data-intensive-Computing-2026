@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from common import create_spark_session, load_stopwords, load_reviews_df, write_text_file
+from common import create_spark_session, load_stopwords, load_reviews_df
 from settings import DATASET_PATH, STOPWORDS_PATH, OUTPUT_DS, CHI_SQUARE_FEATURES
 from part2_02_tokenizer import create_tokenizer
 from part2_03_stopwords import create_stopwords_remover
