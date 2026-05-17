@@ -254,22 +254,13 @@ papermill            # If converting notebooks to scripts with outputs
 ## Project structure
 ```
 Task2/
-├── materials/
-│   ├── Assignment_2_Instructions.pdf
-│   └── req.md                          # This file
-├── src/
-│   ├── part1_rdd.ipynb                 # Part 1: RDD implementation
-│   ├── part2_pipeline.ipynb            # Part 2: DataFrame pipeline
-│   ├── part3_classification.ipynb      # Part 3: SVM classifier
-│   ├── common.py                       # Shared utilities
-│   ├── settings.py                     # Configuration (paths, params)
-│   └── run_all.py                      # Execute all parts sequentially
-├── output/
-│   ├── output_rdd.txt                  # Part 1 results
-│   └── output_ds.txt                   # Part 2 results
-└── report/
-    └── report.pdf                      # Final report
+├── data/                             # local dev set + stopwords (gitignored)
+├── materials/                        # assignment PDF, demo notebook, this log
+├── src/                              # 25 .py modules, 4 shell scripts
+├── output/                           # output_rdd.txt, output_ds.txt, part3_metrics.json
+└── presentation/                     # presentation.md (report draft)
 ```
+See the detailed tree in the Development log section below.
 
 ## Implementation strategy
 
@@ -389,7 +380,6 @@ param_grid = ParamGridBuilder() \
 
 ```
 Task2/
-├── .venv/                       # Virtual environment (Python 3.12, ignored)
 ├── .gitignore
 │
 ├── data/
@@ -400,55 +390,56 @@ Task2/
 │
 ├── materials/
 │   ├── Assignment_2_Instructions.pdf
+│   ├── pyspark_local_vs_yarn.ipynb  # LBD cluster demo (from ~/dataLAB/demos)
 │   └── req.md
 │
 ├── src/
-│   ├── settings.py              # Paths, constants, Spark configs
-│   ├── common.py                # Shared utilities (stopwords, tokenize, chi-square)
+│   ├── settings.py              # Paths, constants, Spark configs, LOCAL_SPARK_RAM
+│   ├── common.py                # _load_text_rdd, load_stopwords, tokenize, chi-square, write_text_file
 │   ├── requirements.txt         # pyspark==4.1.1
 │   ├── readme.md
 │   │
 │   ├── part1_01_load.py         # Load JSON as RDD of (category, reviewText)
-│   ├── part1_02_tokenize.py     # Tokenization + stopword filter + dedup (RDD)
-│   ├── part1_03_chi_square.py   # Chi-square calculation via single reduceByKey pass
-│   ├── part1_04_aggregate.py    # Top-k selection per category + merge
-│   ├── part1_05_output.py       # Format and save output_rdd.txt
-│   ├── part1_06_runner.py       # Part 1 orchestrator (IMPL)
+│   ├── part1_02_tokenize.py     # Tokenization + stopword filter + dedup per doc
+│   ├── part1_03_chi_square.py   # Chi-square via single reduceByKey pass + sentinel counters
+│   ├── part1_04_aggregate.py    # Top-k selection per category + alphabetical merge
+│   ├── part1_05_output.py       # Format output via write_text_file (local or HDFS)
+│   ├── part1_06_runner.py       # Part 1 orchestrator
 │   │
-│   ├── part2_01_load.py         # Load JSON as DataFrame (stub)
-│   ├── part2_02_tokenizer.py    # RegexTokenizer setup (stub)
-│   ├── part2_03_stopwords.py    # StopWordsRemover setup (stub)
-│   ├── part2_04_vectorizer.py   # CountVectorizer setup (stub)
-│   ├── part2_05_idf.py          # IDF estimator setup (stub)
-│   ├── part2_06_chi_selector.py # ChiSqSelector setup (stub)
-│   ├── part2_07_pipeline.py     # Build and fit ML Pipeline (stub)
-│   ├── part2_08_output.py       # Extract terms, save output_ds.txt (stub)
-│   ├── part2_09_runner.py       # Part 2 orchestrator (stub)
+│   ├── part2_01_load.py         # Re-export load_reviews_df from common
+│   ├── part2_02_tokenizer.py    # RegexTokenizer with Task 1 delimiter pattern
+│   ├── part2_03_stopwords.py    # StopWordsRemover + 1-char filter (a-z added)
+│   ├── part2_04_vectorizer.py   # CountVectorizer (no vocab cap)
+│   ├── part2_05_idf.py          # IDF estimator
+│   ├── part2_06_chi_selector.py # ChiSqSelector (2000 top features)
+│   ├── part2_07_pipeline.py     # StringIndexer + 5-stage pipeline, fit
+│   ├── part2_08_output.py       # Extract vocab from fitted model, save output_ds.txt
+│   ├── part2_09_runner.py       # Part 2 orchestrator
 │   │
-│   ├── part3_01_data_split.py   # Train/validation/test split (stub)
-│   ├── part3_02_normalizer.py   # L2 Normalizer setup (stub)
-│   ├── part3_03_svm_estimator.py# LinearSVC + OneVsRest setup (stub)
-│   ├── part3_04_pipeline.py     # Extend part2 pipeline with classifier (stub)
-│   ├── part3_05_grid_builder.py # ParamGridBuilder config (stub)
-│   ├── part3_06_cross_validator.py# CrossValidator setup (stub)
-│   ├── part3_07_evaluator.py    # MulticlassClassificationEvaluator (stub)
-│   ├── part3_08_output.py       # Save metrics and comparison (stub)
-│   ├── part3_09_runner.py       # Part 3 orchestrator (stub)
+│   ├── part3_01_data_split.py   # randomSplit (70/15/15, seed=42)
+│   ├── part3_02_normalizer.py   # L2 vector normalizer
+│   ├── part3_03_svm_estimator.py# LinearSVC wrapped in OneVsRest
+│   ├── part3_04_pipeline.py     # Full pipeline: Part 2 + Normalizer + OneVsRest
+│   ├── part3_05_grid_builder.py # 24-config ParamGrid (chi-sq x regParam x std x maxIter)
+│   ├── part3_06_cross_validator.py# 2-fold CrossValidator, parallelism=2
+│   ├── part3_07_evaluator.py    # MulticlassClassificationEvaluator (F1)
+│   ├── part3_08_output.py       # Save metrics to JSON via write_text_file
+│   ├── part3_09_runner.py       # Part 3 orchestrator
 │   │
-│   ├── run_all.py               # Master Python orchestrator (stub)
-│   ├── run_all.sh               # Shell wrapper: auto-detect local/cluster
-│   ├── run_part1.sh             # Shell wrapper for part 1
+│   ├── run_part1.sh             # Shell wrapper: venv auto-detect, PYSPARK_PYTHON local-only
 │   ├── run_part2.sh             # Shell wrapper for part 2
-│   └── run_part3.sh             # Shell wrapper for part 3
+│   ├── run_part3.sh             # Shell wrapper for part 3
+│   └── run_all.sh               # Calls run_part1 -> run_part2 -> run_part3 sequentially
 │
 ├── output/
+│   ├── .gitkeep
 │   ├── output_rdd.txt           # Part 1 results (generated)
-│   ├── output_ds.txt            # Part 2 results (pending)
-│   ├── part3_metrics.json       # Part 3 grid search results (pending)
-│   └── part3_comparison.txt     # Part 3 performance comparison (pending)
+│   ├── output_ds.txt            # Part 2 results (generated)
+│   └── part3_metrics.json       # Part 3 grid search results (generated)
 │
 └── presentation/
     └── presentation.md          # Report draft
+```
 ```
 - Use development set for all deliverables (avoid full dataset to reduce cluster load)
 
