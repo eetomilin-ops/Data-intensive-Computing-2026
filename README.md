@@ -155,9 +155,29 @@ export HADOOP_STREAMING_JAR=/path/from/command/hadoop-streaming.jar
 
 Upload file to your personal folder + set path or use default place in ./data
 
-# run
+### run
 RUN_LOCAL=false ./src/run_all.sh
-# retrieve outputs from HDFS after each part or at end
+
+### retrieve outputs from HDFS after each part or at end
 hdfs dfs -getmerge /user/<YOUR_USERNAME>/DIC_Task2/output/output_rdd.txt output_rdd.txt
 hdfs dfs -getmerge /user/<YOUR_USERNAME>/DIC_Task2/output/output_ds.txt output_ds.txt
 hdfs dfs -getmerge /user/<YOUR_USERNAME>/DIC_Task2/output/part3_metrics.json part3_metrics.json
+
+### Check if its not hanged 
+
+Normally spark has a fancy web page that is a rendered on master pod . not the case for LDB though , it is firewalled for whatever reasons .
+
+Suggested link like http://lbdmg01.datalab.novalocal:9999/proxy/<your app id here>/ won't work.
+
+Use yarn instead , shell samples below.
+
+**to filter for stderr :**
+
+yarn logs -applicationId application_1778574395760_0440 -log_files stderr 2>&1 | tail -50
+
+** to check for cluster pod errors :**
+yarn logs -applicationId application_1778574395760_0440 2>&1 | grep -E 'Traceback|Error|Exception|File.*line' | head -30
+
+where **application_1778574395760_0440** should be replaced by your task name.
+
+For **local** run , it's on 4040 port , http://localhost:4040/ will do.

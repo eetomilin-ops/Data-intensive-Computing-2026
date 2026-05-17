@@ -1,4 +1,5 @@
 # Shared utilities (load stopwords, helpers)
+import os
 import re  # regex in tokenizer
 from pathlib import Path
 
@@ -35,8 +36,6 @@ def create_spark_session():
 def load_reviews_df(spark, path: str):
     rdd = _load_text_rdd(spark, path)
     return spark.read.json(rdd)
-
-import os
 
 def write_text_file(spark, lines: list[str], path: str):
     # HDFS output (cluster mode) -- use Spark saveAsTextFile, creates part file.

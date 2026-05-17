@@ -581,13 +581,68 @@ Dead code removed 2026-05-16: `safe_parse_review`, `extract_category_text`, 6 un
 - `output_rdd.txt` matches Task 1 format: one alphabetical category line with top 75
   `term:score` entries per category, plus one merged alphabetical dictionary line.
 
-**Usage on cluster:**
-```bash
-cd ~/Task2/data
-./extract_sample.sh
+## 2026-05-17: Part 2 + 3 implementation and cluster deployment
 
-# Then download to local machine:
-scp e12533692@lbd.tuwien.ac.at:~/Task2/data/reviews_devset_5k.json .
+### Part 2 status
+- DataFrame pipeline: StringIndexer -> RegexTokenizer -> StopWordsRemover ->
+  CountVectorizer -> IDF -> ChiSqSelector (2000 top terms).
+- Output: `output_ds.txt`, 2000 terms ordered by chi-square score.
+
+### Part 3 status
+- Full pipeline extends Part 2 with L2 Normalizer + OneVsRest(LinearSVC).
+- 24-config grid search: 2 chi-sq features x 3 regParam x 2 standardization x 2 maxIter.
+- 2-fold CrossValidator with parallelism=1 to avoid macOS multiprocessing pool bug.
+- Best val F1: 0.8691 (2000 features, regParam=0.1, standardization=True, maxIter=50).
+- Test F1: 0.8696 -- no overfitting.
+- Output: `part3_metrics.json`, 24 entries with param configs and F1 scores.
+
+### Cluster deployment -- problems and fixes
+
+**Problem 1 -- YARN container memory cap**
+Cluster max: 8192 MB per container. Original config: 8g executor + ~819 MB overhead
+= 9011 MB, rejected. Fix: 7g executor, 2 instances.
+
+**Problem 2 -- Client-mode driver unreachable**
+YARN nodes (10.11.x network) cannot reach pod IP (10.42.x internal container
+network). Fix: `--deploy-mode cluster` so driver runs on a YARN node, not the pod.
+
+**Problem 3 -- Missing module imports on YARN driver**
+`spark-submit` only uploads the main script. Fix: `--py-files` with all `src/*.py`
+files so imports resolve on the YARN node.
+
+**Problem 4 -- stopwords.txt not on YARN nodes**
+Fix: `--files` ships `../data/stopwords.txt` to the driver container.
+`STOPWORDS_PATH` set to `"stopwords.txt"` in cluster mode (resolves to shipped file).
+
+**Problem 5 -- RUN_LOCAL env not propagating to YARN container**
+Fix: `--conf spark.yarn.appMasterEnv.RUN_LOCAL="$RUN_LOCAL"` so settings.py
+detects cluster mode.
+
+**Problem 6 -- sc.addPyFile() breaks in cluster mode**
+`addPyFile` references local paths that don't exist on the YARN container.
+Redundant since `--py-files` puts all modules on PYTHONPATH. Removed.
+
+**Problem 7 -- Output files inaccessible in cluster mode**
+Driver runs on YARN node; local `open()` writes to that node's filesystem.
+Fix: `write_text_file()` helper detects `/user/` paths and uses Spark's
+`saveAsTextFile` to write to HDFS. Retrieve with `hdfs dfs -getmerge`.
+
+### Shell scripts (current state)
+- Auto-detect venv Python (macOS); fall back to system python3 (cluster).
+- `PYSPARK_PYTHON` only exported for local mode (macOS 3.12/3.14 mismatch).
+  Cluster uses system Python 3.12 matching Spark's bundled version.
+- `LOCAL_SPARK_RAM` env var (default 8g) controls local driver/executor memory.
+- Cluster branch: `spark-submit --master yarn --deploy-mode cluster` with
+  `--py-files`, `--files`, and `--conf spark.yarn.appMasterEnv.RUN_LOCAL`.
+- `run_all.sh` calls part1 -> part2 -> part3 sequentially.
+
+### Stale code removed (2026-05-17)
+- `run_all.py` -- replaced by shell script calls.
+- `OUTPUT_COMPARISON` constant -- never referenced.
+- `DEBUG` flag -- never checked.
+- `numpy`, `PyPDF2` from requirements.txt -- not imported at runtime.
+- `safe_parse_review`, `extract_category_text`, 6 unused `FIELD_*` constants.
+- `sc.addPyFile()` block in part1 runner.
 scp e12533692@lbd.tuwien.ac.at:~/Task2/data/stopwords.txt .
 ```
 

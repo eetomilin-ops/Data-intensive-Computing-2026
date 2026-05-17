@@ -35,7 +35,6 @@ HDFS_OUTPUT_DIR = "/user/e12533692/DIC_Task2/output"
 OUTPUT_RDD = str(OUTPUT_DIR / "output_rdd.txt") if RUN_LOCAL else f"{HDFS_OUTPUT_DIR}/output_rdd.txt"
 OUTPUT_DS = str(OUTPUT_DIR / "output_ds.txt") if RUN_LOCAL else f"{HDFS_OUTPUT_DIR}/output_ds.txt"
 OUTPUT_METRICS = str(OUTPUT_DIR / "part3_metrics.json") if RUN_LOCAL else f"{HDFS_OUTPUT_DIR}/part3_metrics.json"
-OUTPUT_COMPARISON = str(OUTPUT_DIR / "part3_comparison.txt") if RUN_LOCAL else f"{HDFS_OUTPUT_DIR}/part3_comparison.txt"
 
 # Spark configuration - local
 SPARK_LOCAL_CONFIG = {
@@ -62,6 +61,3 @@ SPARK_APP_NAME = "Task2-Assignment2"
 TOP_TERMS_PER_CATEGORY = 75
 CHI_SQUARE_FEATURES = 2000
 RANDOM_SEED = 42
-
-# Debug flag
-DEBUG = os.getenv("DEBUG", "false").lower() == "true"

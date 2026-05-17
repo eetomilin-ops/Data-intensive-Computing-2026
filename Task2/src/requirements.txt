@@ -3,5 +3,3 @@
 # to the same Python used by the driver (3.12) to avoid version mismatch.
 # The shell scripts in src/ handle this automatically.
 pyspark==4.1.1
-PyPDF2==3.0.1
-numpy==2.4.5
