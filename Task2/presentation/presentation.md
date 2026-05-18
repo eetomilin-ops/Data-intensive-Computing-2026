@@ -94,7 +94,7 @@ For *local* runs webserver is on *4040* port.
 
 #### Cluster execution notes
 All tasks runners are wrapped into .sh. To run tasks individually use run_part#.sh, setting RUN_LOCAL=false .
-Jobs submitted via `spark-submit --master yarn --deploy-mode cluster`. All source modules shipped via `--py-files`, stopwords via `--files`. 
+Jobs submitted via [spark-submit --master yarn --deploy-mode cluster]. All source modules shipped via [--py-files], stopwords via [--files]. 
 
 ---
 
@@ -119,15 +119,6 @@ token removal.
 ### 3.1 Pipeline overview
 
 ```mermaid
-%%{init: {
-  "themeVariables": {
-    "diagramMarginY": 0
-  },
-  "flowchart": {
-    "diagramPadding": 0
-  }
-}}%%
-
 flowchart TD
     subgraph shared["common.py + settings.py"]
         SW["load_stopwords"]
@@ -188,27 +179,27 @@ flowchart TD
 
 ### 3.2 Part 1 ( RDD chi-square )
 
-Document-presence semantics: terms deduplicated per review before counting. Counters emitted as `((prefix, key), 1)` tuples in a single flatMap pass:
+Document-presence semantics: terms deduplicated per review before counting. Counters emitted as ((prefix, key), 1) tuples in a single flatMap pass:
 
-- `("__N__", "__N__")` total documents
-- `("__NC__", category)` documents per category
-- `("__NT__", term)` documents containing term
-- `(category, term)` documents in category with term
+- ("__N__", "__N__") total documents
+- ("__NC__", category) documents per category
+- ("__NT__", term) documents containing term
+- (category, term) documents in category with term
 
-One `reduceByKey` aggregates all four counter types. Chi-square computed on 2x2 contingency table, then top-75 per category selected via sort + limit.
+One reduceByKey aggregates all four counter types. Chi-square computed on 2x2 contingency table, then top-75 per category selected via sort + limit.
 
 ### 3.3 Part 2 (Spark ML pipeline)
 
-Five feature stages, plus a StringIndexer for the label column, chained into a single `pyspark.ml.Pipeline` and fit on the review DataFrame. Terms are extracted from the fitted ChiSqSelectorModel by mapping `selectedFeatures` indices to CountVectorizerModel vocabulary.
+Five feature stages, plus a StringIndexer for the label column, chained into a single [pyspark.ml.Pipeline] and fit on the review DataFrame. Terms are extracted from the fitted ChiSqSelectorModel by mapping [selectedFeatures] indices to CountVectorizerModel vocabulary.
 
 | Stage | Spark class | Type | Comment |
 |---|---|---|---|
-| Label encoding | `StringIndexer` | Estimator | Maps category strings to numeric labels (0,1,2...) needed by ChiSqSelector and SVM |
-| Tokenization | `RegexTokenizer` | Transformer | Splits `reviewText` on Task 1 delimiter pattern, gaps mode, casefolds |
-| Stopword removal | `StopWordsRemover` | Transformer | Drops 591 stopwords + single lowercase letters `a`-`z` (1-char filter) |
-| Term-frequency vectors | `CountVectorizer` | Estimator | Builds vocabulary from all reviews, outputs sparse term-count vectors per document |
-| TF-IDF weighting | `IDF` | Estimator | Down-weights terms that appear in many documents, up-weights rare discriminative terms |
-| Feature selection | `ChiSqSelector` | Transformer | Selects top 2000 terms by chi-square score against the category label |
+| Label encoding | [StringIndexer] | Estimator | Maps category strings to numeric labels (0,1,2...) needed by ChiSqSelector and SVM |
+| Tokenization | [RegexTokenizer] | Transformer | Splits [reviewText] on Task 1 delimiter pattern, gaps mode, casefolds |
+| Stopword removal | [StopWordsRemover] | Transformer | Drops 591 stopwords + single lowercase letters [a]-[z] (1-char filter) |
+| Term-frequency vectors | [CountVectorizer] | Estimator | Builds vocabulary from all reviews, outputs sparse term-count vectors per document |
+| TF-IDF weighting | [IDF] | Estimator | Down-weights terms that appear in many documents, up-weights rare discriminative terms |
+| Feature selection | [ChiSqSelector] | Transformer | Selects top 2000 terms by chi-square score against the category label |
 
 ### 3.4 Part 3 (Classification)
 
@@ -228,30 +219,28 @@ CrossValidator is set with 2 folds, parallelism 2, seed 42 for reproducibility (
 
 ### 4.1 Part 1 (RDD output)
 
-Generated `output_rdd.txt` from full cluster devset (~79k reviews, 58 MB):
+Generated [output_rdd.txt] from full cluster devset (~79k reviews, 58 MB):
 
-- 22 product categories, each with 75 `term:chi2` entries
+- 22 product categories, each with 75 [term:chi2] entries
 - 1464 unique terms in merged alphabetical dictionary
 - Top term per category selected by document-presence chi-square
 
-Format: `<category> <term>:<score> ...` (75 terms per line) + merged dictionary line.
-Matches Assignment 1 output specification. 22 categories cover full product
-range of the devset, compared to 3 categories in 5k local sample.
+Format: &lt;category&gt; &lt;term&gt;:&lt;score&gt; ... (75 terms per line) + merged dictionary line.22 categories cover full product range of the devset, compared to 3 categories in 5k local sample.
 
 ### 4.2 Part 2 (Feature selection)
 
 2000 terms selected by chi-square from full devset via Spark ML pipeline.
 Terms ordered by chi-square score (most discriminative first). Output written to
-`output_ds.txt`, one term per line.
+[output_ds.txt], one term per line.
 
-Top-10 terms: `great`, `good`, `love`, `time`, `work`, `recommend`, `back`,
-`easy`, `make`, `bought` — consistent with review-domain language spanning
+Top-10 terms: great, good, love, time, work, recommend, back,
+easy, make, bought — consistent with review-domain language spanning
 multiple categories.
 
 ### 4.2.1 Comparison with Assignment 1
 
 All three outputs compared below were generated from the same dataset
-(`reviews_devset.json`, ~79k reviews, 22 categories).
+(reviews_devset.json, ~79k reviews, 22 categories).
 
 | Metric | Task 1 (mrjob, devset) | Part 1 (Spark RDD, devset) | Part 2 (Spark ML, devset) |
 |---|---|---|---|
@@ -264,27 +253,27 @@ All three outputs compared below were generated from the same dataset
 | Score differences | — | 0 | n/a |
 | Order-only differences | — | 15 of 22 categories | n/a |
 
-**Part 1** is accurate re-implementation of Task 1. Both use the same token-delimiter pattern, the same 591 stopwords, the same `MIN_TOKEN_LENGTH=2` filter, `set()`-based document deduplication, identical chi-square formula, and identical counters. 
+**Part 1** is accurate re-implementation of Task 1. Both use the same token-delimiter pattern, the same 591 stopwords, the same [MIN_TOKEN_LENGTH=2] filter, [set()]-based document deduplication, identical chi-square formula, and identical counters. 
 
 Outputs from both tasks agree on every term and every chi-square score across all 22 categories. 
 
 The only difference is order in 15 of 22 category lines:
 
-Task 1's `reducer_final` sorts by score alone (`sorted(heap, key=lambda x: x[0], reverse=True)`), while Part 1 sorts by `(-score, term)` in `top_k`. 
+Task 1's reducer_final sorts by score alone (sorted by score, descending), while Part 1 sorts by (-score, term) in top_k. 
 
-When multiple terms share the same chi-square value (e.g., `acdelco`, `acura`, and `crv` all at 281.7937 in Automotive), Part1 and Task1 list them in different orders, but the term sets and scores are identical.
+When multiple terms share the same chi-square value (e.g., acdelco, acura, and crv all at 281.7937 in Automotive), Part 1 and Task 1 list them in different orders, but the term sets and scores are identical.
 
 **Part 2** uses Spark ML's ChiSqSelector on TF-IDF weighted vectors  :
- - CountVectorizer without `binary=True` produces term-frequency counts;
+ - CountVectorizer without [binary=True] produces term-frequency counts;
  - IDF applies continuous weights;
  - ChiSqSelector internally discretizes these into bins before computing chi-square.
 
-Part2 selects 2000 terms globally across all categories rather than 75 per category.
+It selects 2000 terms globally across all categories rather than 75 per category.
 751/2000 terms also appear in Task 1 *per-category* merged dictionary.
 
 The other 1249 are terms that are globally discriminative across all 22 categories but do not reach the top 75 in any single category. This is expected: Part 2 selects by global chi-square, not per-category rank.
 
-Both approaches surface review-domain language (`great`, `good`, `love`, etc.) which appears in all three outputs.
+Both approaches surface review-domain language (great, good, love, etc.) which appears in all three outputs.
 
 ### 4.3 Part 3 (Grid search results)
 
@@ -322,7 +311,7 @@ after train/val/test split, 2-fold CV, parallelism=2, wall time ~7.5 hours).
 | Local (macOS) | 5k reviews | 3 | 0.8691 | ~37 min |
 | Cluster (YARN) | ~79k reviews | 22 | 0.5847 | ~7.5 h |
 
-F1 drop from 0.87 (local) to 0.58 (cluster) reflects the difference between a simplified *3-class* problem with *almost no vocabulary overlap* and a *22-class* problem where categories like `CDs_and_Vinyl` vs. `Digital_Music`, or `Baby` vs. `Toys_and_Game`, share vocabulary and are harder to separate.
+F1 drop from 0.87 (local) to 0.58 (cluster) reflects the difference between a simplified *3-class* problem with *almost no vocabulary overlap* and a *22-class* problem where categories like CDs_and_Vinyl vs. Digital_Music, or Baby vs. Toys_and_Game, share vocabulary and are harder to separate.
 
 The 22-category problem has a random baseline of ~4.5%. Cluster F1 of 0.58 is approximately 13x above random, which means the model has learned clear signal despite the higher class count.
 
