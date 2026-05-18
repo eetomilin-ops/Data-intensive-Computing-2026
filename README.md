@@ -164,7 +164,7 @@ hdfs dfs -getmerge /user/<YOUR_USERNAME>/DIC_Task2/output/part3_metrics.json par
 
 ### Check if its not hanged 
 
-Normally spark has a fancy web page that is a rendered on master pod . not the case for LDB though , it is firewalled for whatever reasons .
+Normally spark has a fancy web page that is a rendered on master pod . not the case for LBD though , it is firewalled for whatever reasons .
 
 Suggested link like http://lbdmg01.datalab.novalocal:9999/proxy/<your app id here>/ won't work.
 
