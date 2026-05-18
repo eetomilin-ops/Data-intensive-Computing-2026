@@ -3,8 +3,10 @@
 # Usage:
 #   local : ./run_pipeline.sh [--input LOCAL_FILE] [--output LOCAL_OUT_DIR]
 #   hadoop: ./run_pipeline.sh --hadoop --input HDFS_PATH [--output HDFS_OUT_DIR] [--local-output LOCAL_OUT_DIR]
+#   hadoop: ./run_pipeline.sh --hadoop --devset  (shortcut for dev set, same dataset as Task 2)
 #   --hadoop               run on cluster instead of locally (default: local)
-#   --input PATH           input path (required in hadoop mode)
+#   --devset               hadoop mode: use reviews_devset.json (~95k reviews, same as Task 2)
+#   --input PATH           input path (required in hadoop mode unless --devset)
 #   --output DIR           local mode: local output dir (default: out)
 #                          hadoop mode: HDFS output base dir (default: /user/$(whoami)/task1_out)
 #   --local-output DIR     hadoop mode: local dir for meta.json and output.txt (default: ~/task1_out)
@@ -70,6 +72,8 @@ discover_hadoop_streaming_jar() {
   return 1
 }
 
+HDFS_DEVSET="/dic_shared/amazon-reviews/full/reviews_devset.json"
+
 parse_args() {
   RUNNER="local"
   INPUT=""
@@ -78,6 +82,7 @@ parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --hadoop)  RUNNER="hadoop" ;;
+      --devset)  INPUT="$HDFS_DEVSET" ;;
       --input)   INPUT="$2";  shift ;;
       --output)  OUTDIR="$2"; shift ;;
       --local-output) LOCAL_OUTPUT="$2"; shift ;;

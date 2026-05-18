@@ -245,20 +245,36 @@ multiple categories.
 
 | Metric | Task 1 (mrjob) | Part 1 (Spark RDD) | Part 2 (Spark ML) |
 |---|---|---|---|
-| Categories | 22 | 22 |  |
-| Merged dict terms | 1,418 | 1,464 |  |
-| Top-k per category | 75 | 75 |  |
-| Top-k overall |  |  | 2,000 |
-| Chi-square semantics | term-frequency | document-presence | document-presence (built-in) |
-| Overlap with Task 1 |  | 1,177 shared (69.0%) | 763 shared (38.1%) |
-| Unique to this run |  | 287 | 1,237 |
+| Dataset | `reviewscombined.json` (78.8M reviews) | `reviews_devset.json` (~95k reviews) | `reviews_devset.json` (~95k reviews) |
+| Categories | 22 | 22 | 22 |
+| Merged dict terms | 1,418 | 1,464 | — |
+| Top-k per category | 75 | 75 | — |
+| Top-k overall | — | — | 2,000 |
+| Chi-square semantics | document-presence | document-presence | TF-IDF / discretized |
+| Overlap with Task 1 | — | 1,177 shared (69.0%) | 763 shared (38.1%) |
+| Unique to this run | — | 287 | 1,237 |
 
-Part 1 and Task 1 (from 1st assignment) compute the same chi-square metric on the same dataset but differ in term counting semantics:
-Task 1 used raw term-frequency (each occurrence counts), while Part 1 deduplicates terms per review (document-presence).
-This explains 69.0% overlap, because highly discriminative terms are identified by both methods, but terms that appear frequently within a single review shift in rank between implementations.
+**Important:** Task 1 was evaluated on the full 58 GB dataset (78.8M reviews, while Task 2 Parts 1 and 2 ran on the development set (~95k reviews). The comparison is therefore across different data scales, not between equivalent runs.
 
-Part 2 uses Spark ML's built-in ChiSqSelector on TF-IDF weighted vectors rather than raw counts, and selects terms globally (2000 overall, not per-category).
-38.1% overlap with Task 1 is expected: per-category top-75 selection favors category-specific jargon, while global chi-square picks terms discriminative across all categories simultaneously. Both approaches surface review-domain language (`great`, `good`, `love` appear in all three outputs).
+Both Task 1 and Part 1 use identical document-presence semantics: Task 1 calls
+`unique_terms_for_document()` which returns `set(tokens)` (`common.py` line 35);
+Part 1 returns `set(cleaned)` from `tokenize_document` (`part1_02_tokenize.py`
+line 8). Token-delimiter pattern, 596 stopwords, `MIN_TOKEN_LENGTH=2` filter,
+and chi-square formula are all identical across the two codebases. The 69%
+Jaccard overlap therefore reflects how top-75 term rankings shift when N grows
+from ~10^5 to ~10^8 — terms that are statistically distinctive at dev-set scale
+may be drowned out by orders-of-magnitude more data, and vice versa. It is not
+caused by algorithmic divergence.
+
+Part 2 uses Spark ML's ChiSqSelector on TF-IDF weighted vectors (CountVectorizer
+without `binary=True` produces term-frequency counts; IDF applies continuous
+weights; ChiSqSelector internally discretizes these into bins before computing
+chi-square). It selects terms globally (2000 overall, not per-category) from the
+dev set. The 38.1% overlap with Task 1 reflects both the dataset-size gap and the
+fundamentally different selection strategy (global TF-IDF chi-square on 95k
+reviews vs. per-category document-presence chi-square on 78.8M reviews). Both
+approaches surface review-domain language (`great`, `good`, `love` appear in all
+three outputs).
 
 ### 4.3 Part 3 (Grid search results)
 
