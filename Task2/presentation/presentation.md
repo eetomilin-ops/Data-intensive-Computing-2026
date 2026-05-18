@@ -199,7 +199,7 @@ One `reduceByKey` aggregates all four counter types. Chi-square computed on the 
 
 ### 3.3 Part 2 Spark ML pipeline
 
-Five feature stages, plus a StringIndexer for the label column, chained into a single `pyspark.ml.pipeline` and fit on the review DataFrame. Terms are extracted from the fitted ChiSqSelectorModel by mapping `selectedFeatures` indices to CountVectorizerModel vocabulary.
+Five feature stages, plus a StringIndexer for the label column, chained into a single `--pyspark.ml.pipeline` and fit on the review DataFrame. Terms are extracted from the fitted ChiSqSelectorModel by mapping `selectedFeatures` indices to CountVectorizerModel vocabulary.
 
 | Stage | Spark class | Type | Comment |
 |---|---|---|---|
@@ -239,7 +239,7 @@ Jupyter pod or macOS.
 
 ## 4. Results
 
-### 4.1 Part 1 -- RDD output
+### 4.1 Part 1 RDD output
 
 Generated `output_rdd.txt` from the full cluster devset (~95k reviews, 58 MB):
 
@@ -287,33 +287,87 @@ across all categories simultaneously. Both approaches surface review-domain
 language (`great`, `good`, `love` appear in all three outputs).
 ### 4.3 Part 3 -- Grid search results
 
-| numTopFeatures | regParam | standardization | maxIter | F1 (val)   |
-| -------------- | -------- | --------------- | ------- | ---------- |
-| 2000           | 0.10     | True            | 50      | **0.8691** |
-| 2000           | 0.10     | True            | 100     | 0.8667     |
-| 2000           | 0.01     | True            | 50      | 0.8600     |
-| 2000           | 0.01     | True            | 100     | 0.8598     |
-| 2000           | 0.10     | False           | 50      | 0.8260     |
-| 500            | 0.10     | True            | 50      | 0.8413     |
-| 500            | 0.01     | True            | 50      | 0.8305     |
-| 500            | 1.00     | True            | 50      | 0.7420     |
-| ... (24 total) |          |                 |         |            |
+24-config grid search ran on the full cluster devset (22 categories, ~80k reviews
+after train/val/test split, 2-fold CV, parallelism=2, wall time ~7.5 hours).
 
-**Best configuration**: 2000 chi-square features, regParam=0.1,
-standardization=True, maxIter=50.
-**Test set F1**: 0.8696 (held-out 15% split).
+**Top 5 configurations by validation F1:**
+
+| numTopFeatures | regParam | standardization | maxIter | F1 (val) |
+|---|---|---|---|---|
+| 2000 | 0.01 | True | 100 | **0.5847** |
+| 2000 | 0.01 | True | 50 | 0.5840 |
+| 2000 | 0.10 | True | 50 | 0.5775 |
+| 2000 | 0.10 | True | 100 | 0.5761 |
+| 2000 | 1.00 | True | 50 | 0.5432 |
+| ... | | | | |
+| 500 | 1.00 | False | 50 | 0.2079 |
+| 500 | 1.00 | False | 100 | 0.2081 |
+
+**Best configuration**: 2000 chi-square features, regParam=0.01, standardization=True,
+maxIter=100. Validation F1 = 0.5847.
+
+**Averaged effects:**
+
+| Factor | Level | Mean F1 | Delta |
+|---|---|---|---|
+| Features | 2000 | 0.5300 | +0.1287 |
+| | 500 | 0.4013 | |
+| Standardization | on | 0.5130 | +0.0947 |
+| | off | 0.4183 | |
+
+### 4.3.1 Local vs. cluster comparison
+
+| Setting | Devset | Categories | Best F1 | Runtime |
+|---|---|---|---|---|
+| Local (macOS) | 5k reviews | 3 | 0.8691 | ~37 min |
+| Cluster (YARN) | ~80k reviews | 22 | 0.5847 | ~7.5 h |
+
+The 3-category local sample has a random-guess baseline of ~33%. The 22-category
+full devset has a random baseline of ~4.5%. An F1 of 0.58 is **13x above random**
+on the full problem -- the model learns clear signal despite the high class count.
+
+The drop from 0.87 to 0.58 is not a sign of failure. It reflects the difference
+between a simplified 3-class problem (where reviews for `Apps_for_Android`, `Book`,
+and `Patio_Lawn_and_Garde` have almost no vocabulary overlap) and a 22-class
+problem where categories like `CDs_and_Vinyl` vs. `Digital_Music`, or `Baby` vs.
+`Toys_and_Game`, share substantial vocabulary and are harder to separate with
+unigram features alone.
+
+Additional factors contributing to the gap:
+- The 5k sample may be biased toward reviews with strong category-specific language
+  (head of file extraction), inflating local F1.
+- 22-class OneVsRest trains 22 binary SVMs per config; class imbalance in some
+  categories degrades per-class F1, pulling the macro-average down.
+- TF-IDF + unigram chi-square captures topic-level discriminators well but
+  lacks the n-gram or embedding features that would differentiate closely related
+  categories.
 
 ### 4.4 Observations
 
-- 2000 chi-square features consistently outperform 500 (F1 gain ~0.03).
-- Mid-range regularization (0.1) beats both 0.01 and 1.0.
-- Standardization improves F1 by ~0.04.
-- maxIter=50 sufficient; 100 iterations show no gain.
-- No overfitting: validation and test F1 within 0.0005.
+- 2000 chi-square features consistently outperform 500 (F1 gain +0.13).
+- Regularization at 0.01 edges out 0.10 on the full problem, unlike the local run
+  where 0.10 won -- more classes benefit from less aggressive penalty.
+- Standardization improves F1 by ~0.09 -- largest single-parameter effect.
+- maxIter=50 sufficient; 100 iterations show +0.0007 gain (negligible).
+- No overfitting sign -- validation F1 distribution is smooth across configs.
 
 ---
 
 ## 5. Conclusions
 
-Spark ML pipeline successfully selects discriminative review terms and trains a multi-class SVM classifier achieving 87% F1 on the development set.
-Feature selection (chi-square at 2000 terms) and proper regularization (0.1) are key to performance.
+The Spark ML pipeline successfully selects discriminative review terms and trains
+multi-class SVM classifiers on both a reduced 3-category sample (F1 0.87) and the
+full 22-category development set (F1 0.58, 13x above random baseline).
+
+Feature selection at 2000 chi-square terms and L2 standardization are the two
+strongest performance drivers. Regularization tuning provides modest gains; the
+number of SVM iterations above 50 has no measurable effect.
+
+The pipeline is fully parameterized for local development and YARN cluster
+execution. Cluster deployment required solving seven distinct infrastructure
+issues (YARN container memory limits, pod network isolation, dependency shipping,
+environment propagation) documented in the development log.
+
+Future work: sub-linear text classifiers (e.g., Naive Bayes) for the 22-class
+problem, n-gram features to separate closely related categories, and evaluation
+on the full 58 GB dataset with distributed hyperparameter tuning.

@@ -1,0 +1,170 @@
+[
+  {
+    "numTopFeatures": 2000,
+    "regParam": 0.01,
+    "standardization": true,
+    "maxIter": 50,
+    "f1": 0.5840223648049221
+  },
+  {
+    "numTopFeatures": 2000,
+    "regParam": 0.01,
+    "standardization": true,
+    "maxIter": 100,
+    "f1": 0.584722835295719
+  },
+  {
+    "numTopFeatures": 2000,
+    "regParam": 0.01,
+    "standardization": false,
+    "maxIter": 50,
+    "f1": 0.4920778108376742
+  },
+  {
+    "numTopFeatures": 2000,
+    "regParam": 0.01,
+    "standardization": false,
+    "maxIter": 100,
+    "f1": 0.49023180209785333
+  },
+  {
+    "numTopFeatures": 2000,
+    "regParam": 0.1,
+    "standardization": true,
+    "maxIter": 50,
+    "f1": 0.5775177881184728
+  },
+  {
+    "numTopFeatures": 2000,
+    "regParam": 0.1,
+    "standardization": true,
+    "maxIter": 100,
+    "f1": 0.5760763355527543
+  },
+  {
+    "numTopFeatures": 2000,
+    "regParam": 0.1,
+    "standardization": false,
+    "maxIter": 50,
+    "f1": 0.49114821146114535
+  },
+  {
+    "numTopFeatures": 2000,
+    "regParam": 0.1,
+    "standardization": false,
+    "maxIter": 100,
+    "f1": 0.4909773104854931
+  },
+  {
+    "numTopFeatures": 2000,
+    "regParam": 1.0,
+    "standardization": true,
+    "maxIter": 50,
+    "f1": 0.5431615825774876
+  },
+  {
+    "numTopFeatures": 2000,
+    "regParam": 1.0,
+    "standardization": true,
+    "maxIter": 100,
+    "f1": 0.5427944034574677
+  },
+  {
+    "numTopFeatures": 2000,
+    "regParam": 1.0,
+    "standardization": false,
+    "maxIter": 50,
+    "f1": 0.49420128781199146
+  },
+  {
+    "numTopFeatures": 2000,
+    "regParam": 1.0,
+    "standardization": false,
+    "maxIter": 100,
+    "f1": 0.49321143077139484
+  },
+  {
+    "numTopFeatures": 500,
+    "regParam": 0.01,
+    "standardization": true,
+    "maxIter": 50,
+    "f1": 0.47789554309504934
+  },
+  {
+    "numTopFeatures": 500,
+    "regParam": 0.01,
+    "standardization": true,
+    "maxIter": 100,
+    "f1": 0.4765873508712908
+  },
+  {
+    "numTopFeatures": 500,
+    "regParam": 0.01,
+    "standardization": false,
+    "maxIter": 50,
+    "f1": 0.4144370092053904
+  },
+  {
+    "numTopFeatures": 500,
+    "regParam": 0.01,
+    "standardization": false,
+    "maxIter": 100,
+    "f1": 0.41178089446608546
+  },
+  {
+    "numTopFeatures": 500,
+    "regParam": 0.1,
+    "standardization": true,
+    "maxIter": 50,
+    "f1": 0.4665984009515807
+  },
+  {
+    "numTopFeatures": 500,
+    "regParam": 0.1,
+    "standardization": true,
+    "maxIter": 100,
+    "f1": 0.46506049758083623
+  },
+  {
+    "numTopFeatures": 500,
+    "regParam": 0.1,
+    "standardization": false,
+    "maxIter": 50,
+    "f1": 0.41175893837898137
+  },
+  {
+    "numTopFeatures": 500,
+    "regParam": 0.1,
+    "standardization": false,
+    "maxIter": 100,
+    "f1": 0.4134910872764255
+  },
+  {
+    "numTopFeatures": 500,
+    "regParam": 1.0,
+    "standardization": true,
+    "maxIter": 50,
+    "f1": 0.4329802088332918
+  },
+  {
+    "numTopFeatures": 500,
+    "regParam": 1.0,
+    "standardization": true,
+    "maxIter": 100,
+    "f1": 0.4289521642352811
+  },
+  {
+    "numTopFeatures": 500,
+    "regParam": 1.0,
+    "standardization": false,
+    "maxIter": 50,
+    "f1": 0.2078755498940371
+  },
+  {
+    "numTopFeatures": 500,
+    "regParam": 1.0,
+    "standardization": false,
+    "maxIter": 100,
+    "f1": 0.20808972719540036
+  }
+]
