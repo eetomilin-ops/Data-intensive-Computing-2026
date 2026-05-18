@@ -2,12 +2,15 @@
 # issues on macOS (pool.imap_unordered + deque incompatibility with PySpark).
 from pyspark.ml.tuning import CrossValidator
 
+from settings import RANDOM_SEED
+
+
 def create_cross_validator(
     pipeline,
     param_grid,
     evaluator,
     num_folds: int = 2,
-    seed: int = 42,
+    seed: int = RANDOM_SEED,
 ):
     return CrossValidator(
         estimator=pipeline,

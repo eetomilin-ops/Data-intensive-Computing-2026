@@ -47,7 +47,7 @@ if __name__ == "__main__":
         pipeline    = build_part3_pipeline(tokenizer, sw_remover, vectorizer, idf, chi_sel, normalizer, ovr_svm)
         param_grid  = build_param_grid(chi_sel, ovr_svm)
         evaluator   = create_evaluator()
-        cv          = create_cross_validator(pipeline, param_grid, evaluator)
+        cv          = create_cross_validator(pipeline, param_grid, evaluator, seed=RANDOM_SEED)
 
         n_fits = len(param_grid) * 2  # 2 folds
         print(f"Grid size : {len(param_grid)} configs, 2-fold CV ({n_fits} fits)")

@@ -1,4 +1,4 @@
-# Assignment 2 -- Text Processing and Classification using Apache Spark
+# Assignment 2 : Text Processing and Classification using Apache Spark
 
 **Group 58 :**  Tomilin Evgenii, Sajan Sonu, Puthumana Kudiyirikkal Neeraj, Taikandi Mohammed Muhammed Musthaq, Krishnan Karun
 
@@ -8,52 +8,25 @@
 
 ## 1. General description
 
-The task consist of three parts : 
-
+Assignment 2 consist of three parts : 
 - Re-implementation of Assignment 1 chi-square feature selection using Apache Spark RDDs (Part 1),
-
-- construction of a TF-IDF weighted vector space pipeline with Spark
-  ML (Part 2),
-
-- Training of a multi-class SVM text classifier with grid search
-  over hyperparameters (Part 3).
-
-Each part is split into steps and has relevant code section in /src and description in this document.
-As task suggests the whole project was debugged locally and then run on cluster.
-To alter execution mode use RUN_LOCAL environment variable.
-
-```sh
-RUN_LOCAL=false ./src/run_all.sh # run on LBD
-```
-The output is written to /output in local mode and to HDFS in LBD.
-For cluster it should be obtained like this 
-```sh
-hdfs dfs -getmerge /user/<YOUR_USERNAME>/DIC_Task2/output/output_rdd.txt output_rdd.txt
-hdfs dfs -getmerge /user/<YOUR_USERNAME>/DIC_Task2/output/output_ds.txt output_ds.txt
-hdfs dfs -getmerge /user/<YOUR_USERNAME>/DIC_Task2/output/part3_metrics.json part3_metrics.json
-```
-###  Long runs status checks
-Usually to track progress spark has fancy webpage, but seems its inaccessible for LBD *clustered* runs. To check its alive , observe spark heartbits will send them once half a minute to shell. To check in the moment use grep. 
-```sh
-yarn application -list 2>/dev/null | grep e12533692 # where e12533692 is replaced by your user name
-```
-For *local* runs it's on *4040* port.
+- construction of a TF-IDF weighted vector space pipeline with Spark  ML (Part 2),
+- Training of a multi-class SVM text classifier with grid search over hyperparameters (Part 3).
+Each part is split into execution steps and has relevant code section in /src and description in this document. As assignment suggests, code was debugged locally and then run on cluster, so two run modes were implemented.
 
 ### Project structure
 
 ```sh
 Task2/
-├── data/
-│   ├── readme.md                # Local dev data location
+├── data/                        # Local dev data location
 │   ├── extract_sample.sh        # Pull 5k records from HDFS for local dev
 │   ├── reviews_devset_5k.json   # 5000-record local dev sample (gitignored)
-│   └── stopwords.txt            # Local copy (gitignored)
+│   └── stopwords.txt            # Local stopwords copy (gitignored)
 │
 ├── src/
 │   ├── settings.py              # Paths, constants, Spark configs, LOCAL_SPARK_RAM
-│   ├── common.py                # _load_text_rdd, load_stopwords, tokenize, chi-square, write_text_file
-│   ├── requirements.txt         # pyspark==4.1.1
-│   ├── readme.md
+│   ├── common.py                # shared routines _load_text_rdd, load_stopwords, tokenize, chi-square, write_text_file
+│   ├── requirements.txt         # common dependencies versions file, pyspark==4.1.1
 │   │
 │   ├── part1_01_load.py         # Load JSON as RDD of (category, reviewText)
 │   ├── part1_02_tokenize.py     # Tokenization + stopword filter + dedup per doc
@@ -93,29 +66,47 @@ Task2/
 │   └── part3_metrics.json       # Part 3 grid search results (generated)
 │
 └── presentation/
-    └── presentation.md          # Report draft
+    └── presentation.md          # Report source
 ```
 
 Datasets used: augmented (DEV) Amazon Review Dataset 2014 split (~58 MB, ~95k reviews) on HDFS (/dic_shared/amazon-reviews/full/reviews_devset.json). For local tests head of the same dataset (5k size) was pulled , see (\data\extract_sample.sh) 
 
+### Notes on project running 
+
+To alter execution mode use RUN_LOCAL environment variable.
+
+```sh
+RUN_LOCAL=false ./src/run_all.sh # run on LBD
+```
+Resulting files are written to /output in local mode and to HDFS in LBD.
+For cluster files should be obtained using the below script (default set paths).
+```sh
+hdfs dfs -getmerge /user/<YOUR_USERNAME>/DIC_Task2/output/output_rdd.txt output_rdd.txt
+hdfs dfs -getmerge /user/<YOUR_USERNAME>/DIC_Task2/output/output_ds.txt output_ds.txt
+hdfs dfs -getmerge /user/<YOUR_USERNAME>/DIC_Task2/output/part3_metrics.json part3_metrics.json
+```
+####  Long runs status checks
+Usually to track progress spark has fancy webpage, but it seems to be inaccessible for LBD *clustered* runs. To check running task is alive , observe spark heartbeats which it sends once half a minute to shell. To verify active status use grep: 
+```sh
+yarn application -list 2>/dev/null | grep e12533692 # where e12533692 is replaced by your user name
+```
+For *local* runs webserver is on *4040* port.
+
+#### Cluster execution notes
+All tasks runners are wrapped into .sh. To run tasks individually use run_part#.sh, setting RUN_LOCAL=false .
+Jobs submitted via `spark-submit --master yarn --deploy-mode cluster`. All source modules shipped via `--py-files`, stopwords via `--files`. 
+
 ---
 
-## 2. Problem Overview
+## 2. Problems Overview
 
 Three tasks share a common preprocessing pipeline but differ in implementation approach and end goal:
 
-- **Part 1**: replicate Assignment 1 chi-square term selection using RDD
-  transformations. Output top-75 terms per product category and a merged
-  dictionary, matching the Task 1 format exactly.
+- **Part 1**: replicate Assignment 1 chi-square term selection using RDD transformations. Output top-75 terms per product category and a merged dictionary, matching Task 1 format exactly.
 
-- **Part 2**: build a Spark ML transformation pipeline (tokenization, stopword
-  removal, CountVectorizer, IDF, ChiSqSelector) to select the 2000 most
-  discriminative terms across all categories using DataFrame API.
+- **Part 2**: build a Spark ML transformation pipeline (tokenization, stopword removal, CountVectorizer, IDF, ChiSqSelector) to select the 2000 most discriminative terms across all categories using DataFrame API.
 
-- **Part 3**: extend the Part 2 pipeline with L2 normalization and a multi-class
-  SVM classifier (OneVsRest + LinearSVC). Perform grid search over 24
-  hyperparameter combinations to find the best configuration, evaluated by F1
-  score.
+- **Part 3**: extends Part 2 pipeline with L2 normalization and a multi-class SVM classifier (OneVsRest + LinearSVC). Perform grid search over 24 hyperparameter combinations to find the best configuration, evaluated by F1 score.
 
 All parts use the same preprocessing rules as Assignment 1: whitespace/punctuation
 tokenization, casefolding, stopword filtering (591 stopwords), and single-character
@@ -184,36 +175,35 @@ flowchart TD
     P3OUT --> output3["part3_metrics.json"]
 ```
 
-Part 1 uses a separate RDD-only path (single reduceByKey pass for all chi-square counters, collected to driver for scoring, top-75 heaps per category).
+*note:* Part 1 uses a separate RDD-only path (single reduceByKey pass for all chi-square counters, collected to driver for scoring, top-75 heaps per category).
 
-### 3.2 Part 1 -- RDD chi-square
+### 3.2 Part 1 ( RDD chi-square )
 
 Document-presence semantics: terms deduplicated per review before counting. Counters emitted as `((prefix, key), 1)` tuples in a single flatMap pass:
 
-- `("__N__", "__N__")` -- total documents
-- `("__NC__", category)` -- documents per category
-- `("__NT__", term)` -- documents containing term
-- `(category, term)` -- documents in category with term
+- `("__N__", "__N__")` total documents
+- `("__NC__", category)` documents per category
+- `("__NT__", term)` documents containing term
+- `(category, term)` documents in category with term
 
-One `reduceByKey` aggregates all four counter types. Chi-square computed on the 2x2 contingency table, then top-75 per category selected via sort + limit.
+One `reduceByKey` aggregates all four counter types. Chi-square computed on 2x2 contingency table, then top-75 per category selected via sort + limit.
 
-### 3.3 Part 2 Spark ML pipeline
+### 3.3 Part 2 (Spark ML pipeline)
 
 Five feature stages, plus a StringIndexer for the label column, chained into a single `--pyspark.ml.pipeline` and fit on the review DataFrame. Terms are extracted from the fitted ChiSqSelectorModel by mapping `selectedFeatures` indices to CountVectorizerModel vocabulary.
 
 | Stage | Spark class | Type | Comment |
 |---|---|---|---|
 | Label encoding | `StringIndexer` | Estimator | Maps category strings to numeric labels (0,1,2...) needed by ChiSqSelector and SVM |
-| Tokenization | `RegexTokenizer` | Transformer | Splits `reviewText` on the Task 1 delimiter pattern, gaps mode, casefolds |
+| Tokenization | `RegexTokenizer` | Transformer | Splits `reviewText` on Task 1 delimiter pattern, gaps mode, casefolds |
 | Stopword removal | `StopWordsRemover` | Transformer | Drops 591 stopwords + single lowercase letters `a`-`z` (1-char filter) |
 | Term-frequency vectors | `CountVectorizer` | Estimator | Builds vocabulary from all reviews, outputs sparse term-count vectors per document |
 | TF-IDF weighting | `IDF` | Estimator | Down-weights terms that appear in many documents, up-weights rare discriminative terms |
 | Feature selection | `ChiSqSelector` | Transformer | Selects top 2000 terms by chi-square score against the category label |
 
-### 3.4 Part 3 Classification
+### 3.4 Part 3 (Classification)
 
-Pipeline extended with L2 Normalizer and OneVsRest(LinearSVC). Grid search
-parameters:
+Part 3 extends Part2 pipeline (RegexTokenizer → StopWordsRemover → CountVectorizer → IDF → ChiSqSelector + StringIndexer for the label) with (L2 Normalizer and OneVsRest(LinearSVC) ) grid search, parameters:
 
 | Parameter              | Values         | Count  |
 | ---------------------- | -------------- | ------ |
@@ -223,69 +213,54 @@ parameters:
 | Max iterations         | 50, 100        | 2      |
 | **Total combinations** |                | **24** |
 
-CrossValidator with 2 folds, parallelism 2, seed 42 for reproducibility.
-Training on train+validation split (85%), final evaluation on held-out test
-set (15%).
-
-### 3.5 Cluster execution
-
-Jobs submitted via `spark-submit --master yarn --deploy-mode cluster`.
-All source modules shipped via `--py-files`, stopwords via `--files`.
-Output written to HDFS (`/user/e12533692/DIC_Task2/output/`) and retrieved
-via `hdfs dfs -getmerge`. Local development uses `local[*]` mode on the
-Jupyter pod or macOS.
+CrossValidator is set with 2 folds, parallelism 2, seed 42 for reproducibility (settings.py). Training on train+validation split (85%), final evaluation on held-out test set (15%).
 
 ---
 
 ## 4. Results
 
-### 4.1 Part 1 RDD output
+### 4.1 Part 1 (RDD output)
 
-Generated `output_rdd.txt` from the full cluster devset (~95k reviews, 58 MB):
+Generated `output_rdd.txt` from full cluster devset (~95k reviews, 58 MB):
 
 - 22 product categories, each with 75 `term:chi2` entries
-- 1,464 unique terms in the merged alphabetical dictionary
+- 1,464 unique terms in merged alphabetical dictionary
 - Top term per category selected by document-presence chi-square
 
 Format: `<category> <term>:<score> ...` (75 terms per line) + merged dictionary line.
-Matches Assignment 1 output specification. The 22 categories cover the full product
-range of the devset, compared to 3 categories in the 5k local sample.
+Matches Assignment 1 output specification. 22 categories cover full product
+range of the devset, compared to 3 categories in 5k local sample.
 
-### 4.2 Part 2 -- Feature selection
+### 4.2 Part 2 (Feature selection)
 
-2000 terms selected by chi-square from the full devset via the Spark ML pipeline.
+2000 terms selected by chi-square from full devset via Spark ML pipeline.
 Terms ordered by chi-square score (most discriminative first). Output written to
 `output_ds.txt`, one term per line.
 
 Top-10 terms: `great`, `good`, `love`, `time`, `work`, `recommend`, `back`,
 `easy`, `make`, `bought` — consistent with review-domain language spanning
 multiple categories.
+
 ### 4.2.1 Comparison with Assignment 1
 
 | Metric | Task 1 (mrjob) | Part 1 (Spark RDD) | Part 2 (Spark ML) |
 |---|---|---|---|
-| Categories | 22 | 22 | -- |
-| Merged dict terms | 1,418 | 1,464 | -- |
-| Top-k per category | 75 | 75 | -- |
-| Top-k overall | -- | -- | 2,000 |
+| Categories | 22 | 22 |  |
+| Merged dict terms | 1,418 | 1,464 |  |
+| Top-k per category | 75 | 75 |  |
+| Top-k overall |  |  | 2,000 |
 | Chi-square semantics | term-frequency | document-presence | document-presence (built-in) |
-| Overlap with Task 1 | -- | 1,177 shared (69.0%) | 763 shared (38.1%) |
-| Unique to this run | -- | 287 | 1,237 |
+| Overlap with Task 1 |  | 1,177 shared (69.0%) | 763 shared (38.1%) |
+| Unique to this run |  | 287 | 1,237 |
 
-Part 1 and Task 1 compute the same chi-square metric on the same dataset but
-differ in term counting semantics: Task 1 used raw term-frequency (each occurrence
-counts), while Part 1 deduplicates terms per review (document-presence), matching
-the assignment specification. This explains the 69.0% overlap -- highly
-discriminative terms are identified by both methods, but terms that appear
-frequently within a single review shift in rank between implementations.
+Part 1 and Task 1 (from 1st assignment) compute the same chi-square metric on the same dataset but differ in term counting semantics:
+Task 1 used raw term-frequency (each occurrence counts), while Part 1 deduplicates terms per review (document-presence).
+This explains 69.0% overlap, because highly discriminative terms are identified by both methods, but terms that appear frequently within a single review shift in rank between implementations.
 
-Part 2 uses Spark ML's built-in ChiSqSelector on TF-IDF weighted vectors rather
-than raw counts, and selects terms globally (2000 overall, not per-category).
-The 38.1% overlap with Task 1 is expected: per-category top-75 selection favors
-category-specific jargon, while global chi-square picks terms discriminative
-across all categories simultaneously. Both approaches surface review-domain
-language (`great`, `good`, `love` appear in all three outputs).
-### 4.3 Part 3 -- Grid search results
+Part 2 uses Spark ML's built-in ChiSqSelector on TF-IDF weighted vectors rather than raw counts, and selects terms globally (2000 overall, not per-category).
+38.1% overlap with Task 1 is expected: per-category top-75 selection favors category-specific jargon, while global chi-square picks terms discriminative across all categories simultaneously. Both approaches surface review-domain language (`great`, `good`, `love` appear in all three outputs).
+
+### 4.3 Part 3 (Grid search results)
 
 24-config grid search ran on the full cluster devset (22 categories, ~80k reviews
 after train/val/test split, 2-fold CV, parallelism=2, wall time ~7.5 hours).
@@ -324,7 +299,7 @@ maxIter=100. Validation F1 = 0.5847.
 
 The 3-category local sample has a random-guess baseline of ~33%. The 22-category
 full devset has a random baseline of ~4.5%. An F1 of 0.58 is **13x above random**
-on the full problem -- the model learns clear signal despite the high class count.
+on the full problem which means the model learns clear signal despite the high class count.
 
 The drop from 0.87 to 0.58 is not a sign of failure. It reflects the difference
 between a simplified 3-class problem (where reviews for `Apps_for_Android`, `Book`,
@@ -345,11 +320,10 @@ Additional factors contributing to the gap:
 ### 4.4 Observations
 
 - 2000 chi-square features consistently outperform 500 (F1 gain +0.13).
-- Regularization at 0.01 edges out 0.10 on the full problem, unlike the local run
-  where 0.10 won -- more classes benefit from less aggressive penalty.
-- Standardization improves F1 by ~0.09 -- largest single-parameter effect.
+- Regularization at 0.01 edges out 0.10 on the full problem, unlike the local run where 0.10 won, means more classes benefit from less aggressive penalty.
+- Standardization improves F1 by ~0.09 this is largest single-parameter effect.
 - maxIter=50 sufficient; 100 iterations show +0.0007 gain (negligible).
-- No overfitting sign -- validation F1 distribution is smooth across configs.
+- model demonstrates no overfitting becuase validation F1 distribution is smooth across configs.
 
 ---
 
@@ -362,12 +336,3 @@ full 22-category development set (F1 0.58, 13x above random baseline).
 Feature selection at 2000 chi-square terms and L2 standardization are the two
 strongest performance drivers. Regularization tuning provides modest gains; the
 number of SVM iterations above 50 has no measurable effect.
-
-The pipeline is fully parameterized for local development and YARN cluster
-execution. Cluster deployment required solving seven distinct infrastructure
-issues (YARN container memory limits, pod network isolation, dependency shipping,
-environment propagation) documented in the development log.
-
-Future work: sub-linear text classifiers (e.g., Naive Bayes) for the 22-class
-problem, n-gram features to separate closely related categories, and evaluation
-on the full 58 GB dataset with distributed hyperparameter tuning.
