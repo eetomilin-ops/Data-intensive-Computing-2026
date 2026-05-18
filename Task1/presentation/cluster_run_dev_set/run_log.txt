@@ -1,0 +1,207 @@
+e12533692@jupyter-e12533692:~/DIC_Task1/Task1/src$ bash run_pipeline.sh --hadoop --devset
+using Hadoop streaming jar: /usr/lib/hadoop/tools/lib/hadoop-streaming-3.3.6.jar
+=== stage 1: count stats (runner=hadoop) ===
+No configs found; falling back on auto-configuration
+No configs specified for hadoop runner
+Looking for hadoop binary in $PATH...
+Found hadoop binary: /usr/bin/hadoop
+Using Hadoop version 3.3.6
+Creating temp directory /tmp/job_count_stats.e12533692.20260518.115628.429615
+uploading working dir files to hdfs:///user/e12533692/tmp/mrjob/job_count_stats.e12533692.20260518.115628.429615/files/wd...
+Copying other local files to hdfs:///user/e12533692/tmp/mrjob/job_count_stats.e12533692.20260518.115628.429615/files/
+Running step 1 of 1...
+  packageJobJar: [/tmp/hadoop-unjar6922996846225419948/] [] /tmp/streamjob9659657273944965445.jar tmpDir=null
+  Connecting to Application History server at lbdmg01.datalab.novalocal/10.11.12.189:10200
+  Connecting to Application History server at lbdmg01.datalab.novalocal/10.11.12.189:10200
+  Failing over to rm2
+  Disabling Erasure Coding for path: /tmp/hadoop-yarn/staging/e12533692/.staging/job_1778574395760_0607
+  Total input files to process : 1
+  number of splits:2
+  Submitting tokens for job: job_1778574395760_0607
+  Executing with tokens: []
+  resource-types.xml not found
+  Unable to find 'resource-types.xml'.
+  Configuration yarn.app.mapreduce.am.resource.memory-mb=8192Mi is overriding the yarn.app.mapreduce.am.resource.mb=1536 configuration
+  Submitted application application_1778574395760_0607
+  The url to track the job: http://lbdmg01.datalab.novalocal:9999/proxy/application_1778574395760_0607/
+  Running job: job_1778574395760_0607
+  Job job_1778574395760_0607 running in uber mode : false
+   map 0% reduce 0%
+   map 21% reduce 0%
+   map 37% reduce 0%
+   map 49% reduce 0%
+   map 60% reduce 0%
+   map 67% reduce 0%
+   map 83% reduce 0%
+   map 100% reduce 0%
+   map 100% reduce 100%
+  Job job_1778574395760_0607 completed successfully
+  Output directory: hdfs:///user/e12533692/task1_out_devset/counts
+Counters: 54
+        File Input Format Counters
+                Bytes Read=57984606
+        File Output Format Counters
+                Bytes Written=12423248
+        File System Counters
+                FILE: Number of bytes read=29255258
+                FILE: Number of bytes written=44755298
+                FILE: Number of large read operations=0
+                FILE: Number of read operations=0
+                FILE: Number of write operations=0
+                HDFS: Number of bytes read=57984846
+                HDFS: Number of bytes read erasure-coded=0
+                HDFS: Number of bytes written=12423248
+                HDFS: Number of large read operations=0
+                HDFS: Number of read operations=11
+                HDFS: Number of write operations=2
+        Job Counters
+                Launched map tasks=2
+                Launched reduce tasks=1
+                Rack-local map tasks=2
+                Total megabyte-milliseconds taken by all map tasks=74908672
+                Total megabyte-milliseconds taken by all reduce tasks=11551744
+                Total time spent by all map tasks (ms)=73153
+                Total time spent by all maps in occupied slots (ms)=73153
+                Total time spent by all reduce tasks (ms)=11281
+                Total time spent by all reduces in occupied slots (ms)=11281
+                Total vcore-milliseconds taken by all map tasks=73153
+                Total vcore-milliseconds taken by all reduce tasks=11281
+        Map-Reduce Framework
+                CPU time spent (ms)=72290
+                Combine input records=4404254
+                Combine output records=429869
+                Failed Shuffles=0
+                GC time elapsed (ms)=269
+                Input split bytes=240
+                Map input records=78829
+                Map output bytes=118553590
+                Map output materialized bytes=14627626
+                Map output records=4404254
+                Merged Map outputs=2
+                Peak Map Physical memory (bytes)=397287424
+                Peak Map Virtual memory (bytes)=2669633536
+                Peak Reduce Physical memory (bytes)=386048000
+                Peak Reduce Virtual memory (bytes)=2616107008
+                Physical memory (bytes) snapshot=1149739008
+                Reduce input groups=368708
+                Reduce input records=429869
+                Reduce output records=368708
+                Reduce shuffle bytes=14627626
+                Shuffled Maps =2
+                Spilled Records=1289607
+                Total committed heap usage (bytes)=1907884032
+                Virtual memory (bytes) snapshot=7844413440
+        Shuffle Errors
+                BAD_ID=0
+                CONNECTION=0
+                IO_ERROR=0
+                WRONG_LENGTH=0
+                WRONG_MAP=0
+                WRONG_REDUCE=0
+job output is in hdfs:///user/e12533692/task1_out_devset/counts
+Removing HDFS temp directory hdfs:///user/e12533692/tmp/mrjob/job_count_stats.e12533692.20260518.115628.429615...
+Removing temp directory /tmp/job_count_stats.e12533692.20260518.115628.429615...
+  downloading counts from HDFS (hdfs:///user/e12533692/task1_out_devset/counts) ...
+=== stage 1.5: extract meta ===
+output written to /dev/null
+=== stage 2: score top-k (runner=hadoop) ===
+No configs found; falling back on auto-configuration
+No configs specified for hadoop runner
+Looking for hadoop binary in $PATH...
+Found hadoop binary: /usr/bin/hadoop
+Using Hadoop version 3.3.6
+Creating temp directory /tmp/job_score_topk.e12533692.20260518.115811.795166
+uploading working dir files to hdfs:///user/e12533692/tmp/mrjob/job_score_topk.e12533692.20260518.115811.795166/files/wd...
+Copying other local files to hdfs:///user/e12533692/tmp/mrjob/job_score_topk.e12533692.20260518.115811.795166/files/
+Running step 1 of 1...
+  packageJobJar: [/tmp/hadoop-unjar1226865943692764375/] [] /tmp/streamjob10733143135107189646.jar tmpDir=null
+  Connecting to Application History server at lbdmg01.datalab.novalocal/10.11.12.189:10200
+  Connecting to Application History server at lbdmg01.datalab.novalocal/10.11.12.189:10200
+  Failing over to rm2
+  Disabling Erasure Coding for path: /tmp/hadoop-yarn/staging/e12533692/.staging/job_1778574395760_0608
+  Total input files to process : 1
+  number of splits:2
+  Submitting tokens for job: job_1778574395760_0608
+  Executing with tokens: []
+  resource-types.xml not found
+  Unable to find 'resource-types.xml'.
+  Configuration yarn.app.mapreduce.am.resource.memory-mb=8192Mi is overriding the yarn.app.mapreduce.am.resource.mb=1536 configuration
+  Submitted application application_1778574395760_0608
+  The url to track the job: http://lbdmg01.datalab.novalocal:9999/proxy/application_1778574395760_0608/
+  Running job: job_1778574395760_0608
+  Job job_1778574395760_0608 running in uber mode : false
+   map 0% reduce 0%
+   map 50% reduce 0%
+   map 100% reduce 0%
+   map 100% reduce 100%
+  Job job_1778574395760_0608 completed successfully
+  Output directory: hdfs:///user/e12533692/task1_out_devset/ranked_terms
+Counters: 54
+        File Input Format Counters
+                Bytes Read=12427344
+        File Output Format Counters
+                Bytes Written=27480
+        File System Counters
+                FILE: Number of bytes read=13736677
+                FILE: Number of bytes written=28345573
+                FILE: Number of large read operations=0
+                FILE: Number of read operations=0
+                FILE: Number of write operations=0
+                HDFS: Number of bytes read=12427582
+                HDFS: Number of bytes read erasure-coded=0
+                HDFS: Number of bytes written=27480
+                HDFS: Number of large read operations=0
+                HDFS: Number of read operations=11
+                HDFS: Number of write operations=2
+        Job Counters
+                Launched map tasks=2
+                Launched reduce tasks=1
+                Rack-local map tasks=2
+                Total megabyte-milliseconds taken by all map tasks=17228800
+                Total megabyte-milliseconds taken by all reduce tasks=10166272
+                Total time spent by all map tasks (ms)=16825
+                Total time spent by all maps in occupied slots (ms)=16825
+                Total time spent by all reduce tasks (ms)=9928
+                Total time spent by all reduces in occupied slots (ms)=9928
+                Total vcore-milliseconds taken by all map tasks=16825
+                Total vcore-milliseconds taken by all reduce tasks=9928
+        Map-Reduce Framework
+                CPU time spent (ms)=11150
+                Combine input records=0
+                Combine output records=0
+                Failed Shuffles=0
+                GC time elapsed (ms)=332
+                Input split bytes=238
+                Map input records=368708
+                Map output bytes=12999301
+                Map output materialized bytes=13736683
+                Map output records=368685
+                Merged Map outputs=2
+                Peak Map Physical memory (bytes)=345751552
+                Peak Map Virtual memory (bytes)=2609319936
+                Peak Reduce Physical memory (bytes)=394407936
+                Peak Reduce Virtual memory (bytes)=2617278464
+                Physical memory (bytes) snapshot=1082077184
+                Reduce input groups=96125
+                Reduce input records=368685
+                Reduce output records=22
+                Reduce shuffle bytes=13736683
+                Shuffled Maps =2
+                Spilled Records=737370
+                Total committed heap usage (bytes)=1909456896
+                Virtual memory (bytes) snapshot=7835742208
+        Shuffle Errors
+                BAD_ID=0
+                CONNECTION=0
+                IO_ERROR=0
+                WRONG_LENGTH=0
+                WRONG_MAP=0
+                WRONG_REDUCE=0
+job output is in hdfs:///user/e12533692/task1_out_devset/ranked_terms
+Removing HDFS temp directory hdfs:///user/e12533692/tmp/mrjob/job_score_topk.e12533692.20260518.115811.795166...
+Removing temp directory /tmp/job_score_topk.e12533692.20260518.115811.795166...
+  downloading ranked_terms from HDFS (hdfs:///user/e12533692/task1_out_devset/ranked_terms) ...
+=== stage 3: build output.txt ===
+output written to /home/e12533692/task1_out_devset/output.txt
+done -> /home/e12533692/task1_out_devset/output.txt
+e12533692@jupyter-e12533692:~/DIC_Task1/Task1/src$

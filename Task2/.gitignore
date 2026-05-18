@@ -18,6 +18,9 @@ spark-warehouse/
 
 # Jupyter (if accidentally created)
 .ipynb_checkpoints/
+
+# Large cluster run logs
+output/LBDcluster/*_log.txt
 *.ipynb_checkpoints
 
 # Output files

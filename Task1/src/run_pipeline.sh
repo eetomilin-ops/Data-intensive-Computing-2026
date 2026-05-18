@@ -79,10 +79,11 @@ parse_args() {
   INPUT=""
   OUTDIR=""
   LOCAL_OUTPUT=""
+  USE_DEVSET=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --hadoop)  RUNNER="hadoop" ;;
-      --devset)  INPUT="$HDFS_DEVSET" ;;
+      --devset)  USE_DEVSET="1"; INPUT="$HDFS_DEVSET" ;;
       --input)   INPUT="$2";  shift ;;
       --output)  OUTDIR="$2"; shift ;;
       --local-output) LOCAL_OUTPUT="$2"; shift ;;
@@ -91,10 +92,21 @@ parse_args() {
     shift
   done
 
+  # --devset without explicit --output uses a separate dir to avoid colliding
+  # with any prior full-dataset run at the default task1_out path.
   if [[ "$RUNNER" == "hadoop" ]]; then
-    HDFS_OUT_BASE_RAW="${OUTDIR:-/user/$(whoami)/task1_out}"
+    local default_out
+    local default_local
+    if [[ -n "$USE_DEVSET" && -z "$OUTDIR" ]]; then
+      default_out="/user/$(whoami)/task1_out_devset"
+      default_local="$HOME/task1_out_devset"
+    else
+      default_out="/user/$(whoami)/task1_out"
+      default_local="$HOME/task1_out"
+    fi
+    HDFS_OUT_BASE_RAW="${OUTDIR:-$default_out}"
     HDFS_OUT_BASE="$(to_hdfs_uri "$HDFS_OUT_BASE_RAW")"
-    LOCAL_OUT_BASE="${LOCAL_OUTPUT:-$HOME/task1_out}"
+    LOCAL_OUT_BASE="${LOCAL_OUTPUT:-$default_local}"
     COUNTS_DIR="$HDFS_OUT_BASE/counts"
     RANKED_DIR="$HDFS_OUT_BASE/ranked_terms"
     META_FILE="$LOCAL_OUT_BASE/meta.json"
