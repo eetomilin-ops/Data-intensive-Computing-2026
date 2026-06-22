@@ -54,13 +54,11 @@ def testGetInputS3Mode(s3Client: "S3Client"):
 
 # --- full-pipeline integration tests (require MiniStack + deployed resources) ---
 
+# End-to-end tests that exercise deployed Lambdas on MiniStack.
+# Run only after runMe.sh --deployS3 has created all resources:
+#     pytest Task3/src/tests/testS3.py -m integration -v
 @pytest.mark.integration
 class TestFullPipeline:
-    """End-to-end tests that exercise deployed Lambdas on MiniStack.
-
-    Run only after runMe.sh --deployS3 has created all resources:
-        pytest Task3/src/tests/testS3.py -m integration -v
-    """
 
     @pytest.fixture(autouse=True)
     def _setup(self, ssmClient: "SSMClient"):
@@ -79,8 +77,8 @@ class TestFullPipeline:
         except Exception:
             pytest.skip("SSM parameters not found -- run runMe.sh --deployS3 first")
 
+    # Upload a review to input bucket, verify preprocessing output in staging bucket.
     def testPreprocessingLambdaWritesToS3(self, s3Client: "S3Client"):
-        """Upload a review to input bucket, verify preprocessing output in staging bucket."""
         reviewer = f"PRETEST-{uuid.uuid4().hex[:8]}"
         review = {
             "reviewerID": reviewer,
@@ -117,9 +115,9 @@ class TestFullPipeline:
         s3Client.delete_object(Bucket=self.inputBucket, Key=key)
         s3Client.delete_object(Bucket=stagingBucket, Key=outKey)
 
+    # Upload a review to S3 input bucket, wait for DynamoDB result.
     def testFullChainS3Mode(self, s3Client: "S3Client",
                               ddbClient: "DynamoDBClient"):
-        """Upload a review to S3 input bucket, wait for DynamoDB result."""
         reviewer = f"INTTEST-{uuid.uuid4().hex[:8]}"
         review = {
             "reviewerID": reviewer,
@@ -156,9 +154,9 @@ class TestFullPipeline:
         ddbClient.delete_item(TableName=self.reviewsTable,
                               Key={"reviewerID": {"S": reviewer}, "asin": {"S": review["asin"]}})
 
+    # Upload 4 impolite reviews from same reviewer, assert ban flag.
     def testBanRulePersisted(self, s3Client: "S3Client",
                                ddbClient: "DynamoDBClient"):
-        """Upload 4 impolite reviews from same reviewer, assert ban flag."""
         reviewer = f"BANTEST-{uuid.uuid4().hex[:8]}"
 
         for n in range(4):

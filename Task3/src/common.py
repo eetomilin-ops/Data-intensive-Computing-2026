@@ -229,14 +229,16 @@ def writeReviewToDdb(table: str, review: dict):
     _getDdb().put_item(TableName=table, Item=item)
 
 
+# Extract INSERT/MODIFY records from a DynamoDB Stream event batch.
+# Each record is a type-tagged DynamoDB item; this strips the type wrappers
+# and returns plain Python dicts keyed by attribute name.
 def parseDdbStream(event: dict) -> list[dict]:
-    """Yield each INSERT/MODIFY record from a DynamoDB Stream event."""
     records = []
-    for rec in event.get("Records", []):
+    for rec in event.get("Records", []):  # events are coming in batches by 10, see --batch-size for MiniStack
         if rec.get("eventName") in ("INSERT", "MODIFY"):
             raw = rec.get("dynamodb", {}).get("NewImage", {})
             item = {}
-            for k, v in raw.items():
+            for k, v in raw.items(): # I will  not use map for 4 attributes
                 if "S" in v:
                     item[k] = v["S"]
                 elif "N" in v:
