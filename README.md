@@ -180,3 +180,75 @@ yarn logs -applicationId application_1778574395760_0440 2>&1 | grep -E 'Tracebac
 where **application_1778574395760_0440** should be replaced by your task name.
 
 For **local** run , it's on 4040 port , http://localhost:4040/ will do.
+
+## Task 3 — Serverless Review Analysis
+
+Local AWS emulator (MiniStack 1.3.63) + 4 Lambda functions in an S3-staged event-driven chain.
+
+### Prerequisites
+
+```bash
+cd Task3/src
+pip install -r requirements.txt
+```
+
+### Quick start
+
+```bash
+# terminal 1: start MiniStack
+source ../../.venv/bin/activate && ministack &
+
+# terminal 2: run full pipeline (deploy + process + metrics)
+bash runMe.sh
+
+# terminal 3: monitor progress
+bash monitor.sh
+```
+
+### Pipeline flags
+
+| Flag | What it does |
+|------|-------------|
+| (none) | Full pipeline: deploy + run + dump metrics |
+| `--run` | Run only (assumes already deployed) |
+| `--resume` | Resume from DDB snapshot after crash |
+| `--deploy` | Deploy all resources to MiniStack only |
+| `--dedup` | Pre-dedup input on `(reviewerID, asin)` |
+| `--testFunctions` | Run functional tests (no MiniStack needed) |
+| `--testS3` | Run S3 + integration tests |
+| `--testAll` | Run all tests |
+| `--dumpMetrics` | Scan DDB, write `data/output.csv` |
+| `--batchSize=N` | Custom batch size (default 500) |
+
+### monitor.sh
+
+A companion script that polls DDB table counts + S3 object counts every 10s and prints a convergence snapshot:
+
+```
+[12:34:56] DDB=45200 agg=76834 | S3 in=78827 pf=45200 sa=45198
+```
+
+When the same snapshot appears twice, the pipeline has converged (finished or stalled). Run it from `Task3/src/` or from repo root: `bash Task3/src/monitor.sh`.
+
+### Architecture
+
+```
+S3 input  -->  preprocessing  -->  S3 staging-profanity  -->  profanity
+                                                                  |
+                                                                  v
+                                                           S3 staging-sentiment
+                                                                  |
+                                                                  v
+                                                              sentiment
+                                                                  |
+                                                                  v
+                                                           DynamoDB reviewsTable
+                                                                  |
+                                                            DDB Stream
+                                                                  |
+                                                                  v
+                                                               reducer
+                                                                  |
+                                                                  v
+                                                           DynamoDB aggregatesTable
+```

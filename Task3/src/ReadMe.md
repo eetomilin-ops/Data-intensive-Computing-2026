@@ -33,17 +33,34 @@ src/
 ## Usage
 
 ```bash
-bash Task3/src/runMe.sh                  # full pipeline (deploy + run)
+bash Task3/src/runMe.sh                  # full pipeline (deploy + run + metrics)
+bash Task3/src/runMe.sh --dedup          # full pipeline with input dedup
 bash Task3/src/runMe.sh --run            # run only (assumes already deployed)
+bash Task3/src/runMe.sh --run --dedup    # run only with dedup
 bash Task3/src/runMe.sh --run --batchSize=200  # custom batch size (default 500)
 bash Task3/src/runMe.sh --deploy         # deploy all resources to MiniStack
 bash Task3/src/runMe.sh --testFunctions  # run functional tests (no MiniStack)
 bash Task3/src/runMe.sh --testS3         # run S3 + integration tests
 bash Task3/src/runMe.sh --testAll        # run all tests (functional + S3)
 bash Task3/src/runMe.sh --dumpMetrics    # scan DynamoDB, write data/output.csv
-bash Task3/src/runMe.sh --resume         # resume from DDB snapshot after a crash (skips already-processed reviews)
+bash Task3/src/runMe.sh --resume         # resume from DDB snapshot after a crash
 bash Task3/src/runMe.sh --resume --batchSize=200
+bash Task3/src/runMe.sh --resume --dedup
 ```
+
+### monitor.sh
+
+```bash
+bash Task3/src/monitor.sh
+```
+
+Polls DDB table counts + S3 object counts every 10s. Output format:
+
+```
+[12:34:56] DDB=45200 agg=76834 | S3 in=78827 pf=45200 sa=45198
+```
+
+When the same snapshot appears twice, the pipeline has converged (finished or stalled). Requires MiniStack running. Uses boto3 directly (no awscli dependency).
 
 ### --resume
 
