@@ -2,7 +2,9 @@
 # Single entry point for Task 3 serverless review analysis pipeline.
 # Usage:
 #   bash runMe.sh                  full pipeline (deploy + run dataset)
-#   bash runMe.sh --run             run only (assumes already deployed)
+#   bash runMe.sh --dedup             full pipeline with input dedup (removes
+#                                      multi-category (reviewerID,asin) dups)
+#   bash runMe.sh --run --dedup         run only with dedup (assumes deployed)
 #   bash runMe.sh --deploy          deploy all resources (S3-staged chain)
 #   bash runMe.sh --testFunctions  run functional tests (no MiniStack)
 #   bash runMe.sh --testS3         run S3 + integration tests
@@ -221,8 +223,51 @@ _wireDdbStream() {
     echo "    Trigger: ${table} stream -> ${fnName}"
 }
 
+# ---------------------------------------------------------------------------
+# _dedupInput <inputFile>
+# Amazon review datasets may contain the same (reviewerID, asin) pair under
+# multiple browse-node categories (e.g. a Kindle book also listed under
+# "Book").  The pipeline's DDB table uses (reviewerID, asin) as its composite
+# primary key, so duplicate keys cause a silent overwrite and the second
+# category is lost.  This one-shot pre-pass eliminates key-level duplicates
+# (keeping first occurrence) so the pipeline processes exactly one S3 object
+# per unique review.  Called only when --dedup is passed; not needed for
+# every run since the output is deterministic and can be reused.
+# ---------------------------------------------------------------------------
+_dedupInput() {
+    local inFile="$1"
+    local outFile="${inFile%.json}_dedup.json"
+    if [ -f "$outFile" ]; then
+        echo "  Dedup file already exists: ${outFile}"
+        echo "  Remove it to force re-dedup or skip --dedup to use original."
+        echo "$outFile"
+        return
+    fi
+    echo "  Deduplicating by (reviewerID, asin) ..."
+    "${PYTHON}" -c "
+import json
+seen = set()
+kept = 0
+dropped = 0
+with open('${inFile}') as fin, open('${outFile}', 'w') as fout:
+    for line in fin:
+        r = json.loads(line)
+        key = (r.get('reviewerID',''), r.get('asin',''))
+        if key not in seen:
+            seen.add(key)
+            fout.write(line)
+            kept += 1
+        else:
+            dropped += 1
+print(f'  kept: {kept},  dropped (multi-category dups): {dropped}')
+"
+    echo "  Dedup file: ${outFile}"
+    echo "$outFile"
+}
+
 runFullPipeline() {
     local batchSize="${1:-500}"
+    local doDedup="${2:-0}"
     echo "=== Running full pipeline (batch=${batchSize}) ==="
 
     local dataFile="${SCRIPT_DIR}/../data/reviews_devset.json"
@@ -232,6 +277,10 @@ runFullPipeline() {
         echo "  Fetching reviews_devset.json from HDFS ..."
         mkdir -p "$(dirname "$dataFile")"
         hdfs dfs -get /dic_shared/amazon-reviews/full/reviews_devset.json "$dataFile"
+    fi
+
+    if [ "$doDedup" -eq 1 ]; then
+        dataFile="$(_dedupInput "$dataFile" | tail -1)"
     fi
     local totalLines
     totalLines=$(wc -l < "$dataFile" | tr -d ' ')
@@ -268,7 +317,7 @@ with open('${dataFile}') as f:
             if errors <= 5:
                 print(f'WARN: S3 put_object failed (review {offset+i}): {e}', file=sys.stderr)
 print(uploaded)
-" 2>&1)
+")
         offset=$(( offset + ${batchSize} ))
         # cap offset at totalLines so target never exceeds what is possible
         if [ "$offset" -gt "$totalLines" ]; then
@@ -276,52 +325,58 @@ print(uploaded)
         fi
         printf "[%s] uploaded %d / %d (sent=%d)\n" "$(date +%H:%M:%S)" "${offset}" "${totalLines}" "${batchUploaded}"
 
-        # backpressure: wait for threshold * offset reviews to land in DDB
-        # timeout after ~10 min per batch (200 iterations * 3s = 600s);
-        # after 20 idle iterations (~60s with no progress), attempt re-drive
+        # backpressure + convergence: wait until threshold fraction of uploaded
+        # reviews reaches DDB before sending the next batch.  if DDB table
+        # counts (reviewsTable + aggregatesTable) are unchanged across two
+        # consecutive checks, the pipeline has converged -- either finished or
+        # permanently stalled -- and the loop breaks instead of timing out.
         target=$(awk -v off="$offset" -v t="$pipelineBatchThreshold" 'BEGIN { printf "%d", off * t }')
-        # clamp target: never exceed totalLines (last batch may be partial)
         if [ "$target" -gt "$totalLines" ]; then
             target="$totalLines"
         fi
         local current=0
         local iter=0
-        local stallIter=0
-        local lastCurrent=0
         local maxIter=200
+        local lastSnapshot=""
+        local convCount=0
         while true; do
             current=$("${AWS[@]}" dynamodb describe-table --table-name "$tableReviews" \
                 --query 'Table.ItemCount' --output text 2>/dev/null || echo "0")
             current="${current:-0}"
+
+            # convergence check: same snapshot twice -> done waiting
+            local snap
+            snap="$(_snapshotMetrics)"
+            if [ "$snap" = "$lastSnapshot" ]; then
+                convCount=$(( convCount + 1 ))
+                if [ "$convCount" -ge 2 ]; then
+                    printf "\n[%s] converged (snapshot unchanged x2): %s\n" \
+                        "$(date +%H:%M:%S)" "$snap"
+                    break
+                fi
+            else
+                convCount=0
+                lastSnapshot="$snap"
+            fi
+
             if [ "$current" -ge "$target" ]; then break; fi
+
             iter=$(( iter + 1 ))
             if [ "$iter" -ge "$maxIter" ]; then
                 printf "\n[%s] WARN: backpressure timeout after %d iterations (DDB %d, target %d)\n" \
                     "$(date +%H:%M:%S)" "$iter" "$current" "$target"
                 break
             fi
-            # detect stall: no progress in 20 iterations (~60s)
-            if [ "$current" -eq "$lastCurrent" ]; then
-                stallIter=$(( stallIter + 1 ))
-            else
-                stallIter=0
-                lastCurrent="$current"
-            fi
-            if [ "$stallIter" -ge 20 ]; then
-                printf "\n[%s] stall detected at DDB %d (target %d), re-driving stuck reviews\n" \
-                    "$(date +%H:%M:%S)" "$current" "$target"
-                _redriveStuck "$current" "$target"
-                stallIter=0
-            fi
-            printf "[%s] backpressure: DDB %d / %d (target %d, iter %d)\r" \
-                "$(date +%H:%M:%S)" "$current" "$offset" "$target" "$iter"
+            printf "[%s] backpressure: DDB %d / %d (target %d, iter %d, conv %d)\r" \
+                "$(date +%H:%M:%S)" "$current" "$offset" "$target" "$iter" "$convCount"
             sleep 3
         done
         echo ""
     done
 
-    # drain: poll DDB until all reviews land; retry stuck S3 triggers
-    _drainStaging "$totalLines"
+    # autoreplay: scan all staging buckets once, re-invoke stuck reviews,
+    # then wait for convergence (same DDB snapshot twice or count reaches expected)
+    _replayUnprocessed "$totalLines"
     echo "=== Pipeline complete: ${totalLines} reviews uploaded ==="
 }
 
@@ -329,6 +384,7 @@ print(uploaded)
 # clear stale staging objects, then upload only the missing ones.
 runResume() {
     local batchSize="${1:-500}"
+    local doDedup="${2:-0}"
     echo "=== Resuming from DDB snapshot ==="
 
     local dataFile="${SCRIPT_DIR}/../data/reviews_devset.json"
@@ -336,6 +392,10 @@ runResume() {
         echo "  Fetching reviews_devset.json from HDFS ..."
         mkdir -p "$(dirname "$dataFile")"
         hdfs dfs -get /dic_shared/amazon-reviews/full/reviews_devset.json "$dataFile"
+    fi
+
+    if [ "$doDedup" -eq 1 ]; then
+        dataFile="$(_dedupInput "$dataFile" | tail -1)"
     fi
     local totalLines
     totalLines=$(wc -l < "$dataFile" | tr -d ' ')
@@ -405,6 +465,7 @@ print(sent)
         local batchSent
         read -r batchSent < /tmp/resume_sent.txt
         batchSent="${batchSent:-0}"
+        rm -f /tmp/resume_sent.txt
 
         offset=$(( offset + batchSize ))
         sent=$(( sent + batchSent ))
@@ -429,34 +490,39 @@ print(t['Table']['ItemCount'])
         fi
         local current=0
         local iter=0
-        local stallIter=0
-        local lastCurrent=0
         local maxIter=200
+        local lastSnapshot=""
+        local convCount=0
         while true; do
             current=$("${AWS[@]}" dynamodb describe-table --table-name "$tableReviews" \
                 --query 'Table.ItemCount' --output text 2>/dev/null || echo "0")
             current="${current:-0}"
+
+            # convergence check: same snapshot twice -> done waiting
+            local snap
+            snap="$(_snapshotMetrics)"
+            if [ "$snap" = "$lastSnapshot" ]; then
+                convCount=$(( convCount + 1 ))
+                if [ "$convCount" -ge 2 ]; then
+                    printf "\n[%s] converged (snapshot unchanged x2): %s\n" \
+                        "$(date +%H:%M:%S)" "$snap"
+                    break
+                fi
+            else
+                convCount=0
+                lastSnapshot="$snap"
+            fi
+
             if [ "$current" -ge "$target" ]; then break; fi
+
             iter=$(( iter + 1 ))
             if [ "$iter" -ge "$maxIter" ]; then
                 printf "\n[%s] WARN: backpressure timeout after %d iterations (DDB %d, target %d)\n" \
                     "$(date +%H:%M:%S)" "$iter" "$current" "$target"
                 break
             fi
-            if [ "$current" -eq "$lastCurrent" ]; then
-                stallIter=$(( stallIter + 1 ))
-            else
-                stallIter=0
-                lastCurrent="$current"
-            fi
-            if [ "$stallIter" -ge 20 ]; then
-                printf "\n[%s] stall detected at DDB %d (target %d), re-driving stuck reviews\n" \
-                    "$(date +%H:%M:%S)" "$current" "$target"
-                _redriveStuck "$current" "$target"
-                stallIter=0
-            fi
-            printf "[%s] backpressure: DDB %d / %d (target %d, iter %d)\r" \
-                "$(date +%H:%M:%S)" "$current" "$sent" "$target" "$iter"
+            printf "[%s] backpressure: DDB %d / %d (target %d, iter %d, conv %d)\r" \
+                "$(date +%H:%M:%S)" "$current" "$sent" "$target" "$iter" "$convCount"
             sleep 3
         done
         echo ""
@@ -464,23 +530,52 @@ print(t['Table']['ItemCount'])
 
     rm -f "$doneFile"
 
-    # drain: poll DDB until all reviews land; retry stuck S3 triggers
-    _drainStaging "$totalLines"
+    # autoreplay: scan all staging buckets once, re-invoke stuck reviews
+    _replayUnprocessed "$totalLines"
     echo "=== Resume complete ==="
 }
 
 # lightweight re-drive: scan staging buckets and re-invoke Lambdas for reviews
 # not yet in DDB. used mid-batch when the backpressure loop detects a stall.
-_redriveStuck() {
-    local ddbCurrent="$1"
-    local ddbTarget="$2"
+# ---------------------------------------------------------------------------
+# _snapshotMetrics
+# Returns a compact string of DDB table counts for convergence detection.
+# When this string is unchanged across two consecutive checks, the pipeline
+# has converged (either finished or permanently stalled) and the wait loop
+# can break instead of timing out.
+# Format:  reviewsTable|aggregatesTable
+# ---------------------------------------------------------------------------
+_snapshotMetrics() {
+    local ddbRev ddbAgg
+    ddbRev=$("${AWS[@]}" dynamodb describe-table --table-name "$tableReviews" \
+        --query 'Table.ItemCount' --output text 2>/dev/null || echo "0")
+    ddbRev="${ddbRev:-0}"
+    ddbAgg=$("${AWS[@]}" dynamodb describe-table --table-name "$tableAggregates" \
+        --query 'Table.ItemCount' --output text 2>/dev/null || echo "0")
+    ddbAgg="${ddbAgg:-0}"
+    echo "${ddbRev}|${ddbAgg}"
+}
+
+# ---------------------------------------------------------------------------
+# _replayUnprocessed <expectedTotal>
+# Post-pipeline safety net: scan all three staging buckets once, find every
+# review whose (reviewerID, asin) is absent from DynamoDB, and re-invoke the
+# appropriate downstream Lambda.  Verbose logging shows each replay action.
+# After the single replay pass, poll with convergence detection until all
+# metrics stabilise (same snapshot twice) or DDB reaches expected total.
+# ---------------------------------------------------------------------------
+_replayUnprocessed() {
+    local expected="$1"
+    echo "=== Autoreplay: scanning staging buckets for unprocessed reviews ==="
+
+    # single thorough replay pass -- verbose
     "${PYTHON}" -c "
 import boto3, json, sys
 s3 = boto3.client('s3', endpoint_url='${MINISTACK_ENDPOINT}')
 lam = boto3.client('lambda', endpoint_url='${MINISTACK_ENDPOINT}')
 ddb = boto3.client('dynamodb', endpoint_url='${MINISTACK_ENDPOINT}')
 
-# paginate DDB scan to build done-set
+# build done-set from DDB (paginated scan)
 done = set()
 scanKwargs = {'TableName': '${tableReviews}'}
 while True:
@@ -491,11 +586,21 @@ while True:
         break
     scanKwargs['ExclusiveStartKey'] = resp['LastEvaluatedKey']
 
-count = 0
-for bucket, targetFn in [('${bucketStagingProfanity}','${fnProf}'),('${bucketStagingSentiment}','${fnSent}')]:
+print(f'  DDB done-set: {len(done)} reviews')
+
+# bucket -> downstream Lambda mapping
+chain = [
+    ('${bucketInput}',               '${fnPre}'),
+    ('${bucketStagingProfanity}',    '${fnProf}'),
+    ('${bucketStagingSentiment}',    '${fnSent}'),
+]
+
+totalReplayed = 0
+for bucket, targetFn in chain:
     token = None
+    bucketCount = 0
     while True:
-        listKwargs = {'Bucket': bucket, 'MaxKeys': 200}
+        listKwargs = {'Bucket': bucket, 'MaxKeys': 500}
         if token:
             listKwargs['ContinuationToken'] = token
         objs = s3.list_objects_v2(**listKwargs) or {}
@@ -505,80 +610,67 @@ for bucket, targetFn in [('${bucketStagingProfanity}','${fnProf}'),('${bucketSta
             except Exception:
                 continue
             key = (body.get('reviewerID',''), body.get('asin',''))
-            if key not in done and key != ('',''):
+            if key == ('',''):
+                continue
+            if key not in done:
                 lam.invoke(FunctionName=targetFn, InvocationType='Event', Payload=json.dumps(body))
-                count += 1
-                if count >= 200:  # limit per re-drive cycle
-                    break
-        if not objs.get('IsTruncated') or count >= 200:
-            break
-        token = objs.get('NextContinuationToken')
-if count:
-    print(f'    re-driven {count} stuck reviews from staging buckets', file=sys.stderr)
-" 2>/dev/null
-}
-
-# drain staging buckets: poll DDB until count reaches expected total,
-# re-invoke any reviews stuck in staging buckets (S3 trigger drop workaround)
-_drainStaging() {
-    local expected="$1"
-    local current=0
-    local tries=0
-    local maxTries=60  # 5 min at 5s intervals
-    while [ "$current" -lt "$expected" ] && [ "$tries" -lt "$maxTries" ]; do
-        current=$("${AWS[@]}" dynamodb describe-table --table-name "$tableReviews" \
-            --query 'Table.ItemCount' --output text 2>/dev/null || echo "0")
-        current="${current:-0}"
-        local gap=$(( expected - current ))
-        printf "[%s] DDB: %d / %d (gap=%d, try=%d)\n" "$(date +%H:%M:%S)" "${current}" "${expected}" "${gap}" "${tries}"
-
-        if [ "$gap" -gt 0 ] && [ "$tries" -gt 0 ]; then
-            # re-drive stuck reviews from staging back into the chain
-            "${PYTHON}" -c "
-import boto3, json
-s3 = boto3.client('s3', endpoint_url='${MINISTACK_ENDPOINT}')
-lam = boto3.client('lambda', endpoint_url='${MINISTACK_ENDPOINT}')
-ddb = boto3.client('dynamodb', endpoint_url='${MINISTACK_ENDPOINT}')
-
-# paginate DDB scan
-done = set()
-scanKwargs = {'TableName': '${tableReviews}'}
-while True:
-    resp = ddb.scan(**scanKwargs)
-    for i in resp.get('Items', []):
-        done.add((i.get('reviewerID',{}).get('S',''), i.get('asin',{}).get('S','')))
-    if 'LastEvaluatedKey' not in resp:
-        break
-    scanKwargs['ExclusiveStartKey'] = resp['LastEvaluatedKey']
-
-count = 0
-for bucket, targetFn in [('${bucketInput}','${fnPre}'),('${bucketStagingProfanity}','${fnProf}'),('${bucketStagingSentiment}','${fnSent}')]:
-    token = None
-    while True:
-        listKwargs = {'Bucket': bucket}
-        if token:
-            listKwargs['ContinuationToken'] = token
-        objs = s3.list_objects_v2(**listKwargs) or {}
-        for o in objs.get('Contents', []):
-            try:
-                body = json.loads(s3.get_object(Bucket=bucket, Key=o['Key'])['Body'].read())
-            except: continue
-            key = (body.get('reviewerID',''), body.get('asin',''))
-            if key not in done and key != ('',''):
-                lam.invoke(FunctionName=targetFn, InvocationType='Event', Payload=json.dumps(body))
-                count += 1
+                bucketCount += 1
+                print(f'    REPLAY: {key[0][:20]:20s} / {key[1][:12]:12s}  bucket={bucket:35s}  ->  {targetFn}')
         if not objs.get('IsTruncated'):
             break
         token = objs.get('NextContinuationToken')
-if count: print(f'  re-driven {count} stuck reviews')
-" 2>/dev/null
+    if bucketCount:
+        print(f'  bucket {bucket}: replayed {bucketCount} reviews -> {targetFn}')
+    totalReplayed += bucketCount
+
+if totalReplayed == 0:
+    print('  all reviews already in DDB -- nothing to replay')
+else:
+    print(f'  TOTAL replayed: {totalReplayed}')
+"
+
+    # after replay, poll until convergence or DDB reaches expected
+    echo ""
+    echo "=== Waiting for convergence after autoreplay ==="
+    local current=0
+    local tries=0
+    local maxTries=120  # 10 min at 5s intervals
+    local lastSnapshot=""
+    local convCount=0
+    while [ "$tries" -lt "$maxTries" ]; do
+        current=$("${AWS[@]}" dynamodb describe-table --table-name "$tableReviews" \
+            --query 'Table.ItemCount' --output text 2>/dev/null || echo "0")
+        current="${current:-0}"
+
+        local snap
+        snap="$(_snapshotMetrics)"
+
+        printf "[%s] DDB: reviews=%s  (target %d, try %d)\n" \
+            "$(date +%H:%M:%S)" "$snap" "$expected" "$tries"
+
+        # convergence: same snapshot twice
+        if [ "$snap" = "$lastSnapshot" ]; then
+            convCount=$(( convCount + 1 ))
+            if [ "$convCount" -ge 2 ]; then
+                echo "  converged -- snapshot unchanged x2"
+                break
+            fi
+        else
+            convCount=0
+            lastSnapshot="$snap"
+        fi
+
+        if [ "$current" -ge "$expected" ]; then
+            echo "  DDB count reached expected total"
+            break
         fi
 
         tries=$(( tries + 1 ))
-        [ "$current" -ge "$expected" ] && break
         sleep 5
     done
-    echo "  final DDB count: ${current}"
+    echo "  final metrics: reviewsTable=$current  aggregatesTable=$( \
+        "${AWS[@]}" dynamodb describe-table --table-name "$tableAggregates" \
+        --query 'Table.ItemCount' --output text 2>/dev/null || echo "0")"
 }
 
 dumpMetrics() {
@@ -596,11 +688,13 @@ dumpMetrics.main()
 
 cd "$SCRIPT_DIR/.."
 
-# parse --batchSize=N if present, default 500
+# parse --batchSize=N and --dedup if present
 BATCH_SIZE=500
+DEDUP=0
 for arg in "$@"; do
     case "$arg" in
         --batchSize=*) BATCH_SIZE="${arg#*=}" ;;
+        --dedup)       DEDUP=1 ;;
     esac
 done
 
@@ -632,7 +726,7 @@ case "${1:-}" in
             echo "ERROR: bucket ${bucketInput} not found. Run --deploy first." >&2
             exit 1
         fi
-        runFullPipeline "${BATCH_SIZE:-500}"
+        runFullPipeline "${BATCH_SIZE:-500}" "$DEDUP"
         dumpMetrics
         ;;
     --resume)
@@ -641,17 +735,17 @@ case "${1:-}" in
             echo "ERROR: bucket ${bucketInput} not found. Run --deploy first." >&2
             exit 1
         fi
-        runResume "${BATCH_SIZE:-500}"
+        runResume "${BATCH_SIZE:-500}" "$DEDUP"
         dumpMetrics
         ;;
     "")
         deployS3
         sleep 3
-        runFullPipeline "${BATCH_SIZE:-500}"
+        runFullPipeline "${BATCH_SIZE:-500}" "$DEDUP"
         dumpMetrics
         ;;
     *)
-        echo "Usage: runMe.sh [--deploy|--run|--resume|--testFunctions|--testS3|--testAll|--dumpMetrics] [--batchSize=N]"
+        echo "Usage: runMe.sh [--deploy|--run|--resume|--testFunctions|--testS3|--testAll|--dumpMetrics] [--batchSize=N] [--dedup]"
         exit 1
         ;;
 esac

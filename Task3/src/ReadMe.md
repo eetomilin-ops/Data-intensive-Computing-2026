@@ -320,8 +320,17 @@ item["tokens"] = {"SS": uniqueTokens}
 **Fixes in `runMe.sh`:**
 1. **Timeout:** 200-iteration cap (~10 min per batch at 3s polling). After cap, loop breaks with a warning rather than hanging.
 2. **Error detection:** Python upload script now catches `put_object` exceptions, logs first 5 errors to stderr, and returns actual uploaded count.
-3. **Stall detection + re-drive:** If `ItemCount` is unchanged for 20 consecutive iterations (~60s), a new `_redriveStuck()` helper scans staging buckets and re-invokes the downstream Lambda for stuck reviews (limited to 200 per cycle).
+3. **Stall detection + re-drive (replaced by convergence + autoreplay below):** ~~If `ItemCount` is unchanged for 20 consecutive iterations (~60s), a new `_redriveStuck()` helper scans staging buckets and re-invokes the downstream Lambda for stuck reviews (limited to 200 per cycle).~~ Removed 2026-06-22 in favour of convergence-based stopping + dedicated autoreplay pass.
 4. **Target clamping:** `offset` and `target` are capped at `totalLines` to prevent impossible targets on partial last batches.
+
+### 2026-06-22: Pipeline stopping criteria -- convergence-based break
+
+**Symptom:** Backpressure loop used simple DDB count threshold + timeout (200 iterations) + stall detection (20 idle iterations -> re-drive). This was fragile: it could break too early on slow progress or wait too long on a permanently stuck pipeline. The re-drive-in-loop approach also mixed concerns (polling + recovery in the same tight loop).
+
+**Fix in `runMe.sh`:** Replaced stall detection and `_redriveStuck` with:
+1. **`_snapshotMetrics()`** -- cheap helper that returns `reviewsTable|aggregatesTable` DDB counts (both `describe_table` calls, no S3 listing).
+2. **Convergence detection in backpressure loop:** Every 3s iteration, compare current snapshot to previous. If identical twice in a row, the pipeline has converged (either finished or permanently stalled) -- break immediately instead of waiting for timeout. This catches hangs ~6s after they occur rather than ~10min.
+3. **`_replayUnprocessed()`** -- dedicated post-pipeline autoreplay pass. Runs once after all batches are uploaded (replacing the old `_drainStaging` polling loop). Scans all three staging buckets, finds every review whose `(reviewerID, asin)` is absent from DynamoDB, and re-invokes the appropriate downstream Lambda. Verbose logging shows each replay action. After the single replay pass, polls with the same convergence detection until stable or DDB reaches expected total.
 
 ### 2026-06-22: Reducer per-record SSM calls
 
@@ -333,4 +342,13 @@ banThreshold = int(getSsmParam("/review-app/ban/threshold"))
 ...
 state = updateImpoliteCounter(reviewerID, state, isImpolite=isImpolite, threshold=banThreshold)
 ```
+
+### 2026-06-22: Multi-category duplicate (reviewerID, asin) pairs in dataset -- added --dedup flag
+
+**Symptom:** `reviews_devset.json` contains 78829 lines but only 78827 unique `(reviewerID, asin)` pairs. The 2 duplicate pairs differ ONLY in `category` (e.g. "Book" vs "Kindle_Store") -- all 8 other fields are byte-identical. This is legitimately caused by Amazon products being listed under multiple browse nodes; the same review appears once per category. The pipeline's DDB table uses `(reviewerID, asin)` as composite primary key, so the second write silently overwrites the first and the second category is lost.
+
+**Fix in `runMe.sh`:** Added `_dedupInput()` helper function and `--dedup` CLI flag. When `--dedup` is passed, the pipeline pre-processes `reviews_devset.json` once (keeping first occurrence per `(reviewerID, asin)` pair) and writes `reviews_devset_dedup.json`. The deduped file is reused on subsequent runs. The dedup is a one-shot operation (78829 lines read, 78827 written, ~2 seconds) not needed for every pipeline execution. Reasoning documented in inline comments:
+- Category is an unused pass-through field (never stored in DDB, never read by any Lambda)
+- Dropping one category is safe: identical sentiment, profanity, tokens for both entries
+- First-occurrence wins: keeps "Book" over "Kindle_Store", "Sports_and_Outdoor" over "Clothing_Shoes_and_Jewelry"
 
