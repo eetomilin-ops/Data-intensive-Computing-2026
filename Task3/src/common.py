@@ -52,10 +52,8 @@ def _resolveEndpoint() -> str | None:
     return None
 
 
-# --- NLTK initialisation (module-level: loaded once per Lambda cold start) ---
-# Each Lambda invocation no longer re-imports NLTK or rechecks data paths.
-# This cuts per-invocation overhead from ~200ms to ~0ms for warm containers.
-
+#  NLTK initialisation moved here,
+#  each Lambda does not re-imports NLTK or rechecks data paths.
 import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
@@ -67,13 +65,14 @@ _stopwords: set[str] = set(stopwords.words("english"))
 _sia = SentimentIntensityAnalyzer()
 
 def _initNltk():
-    # SSM for Lambda bundled data; local dev falls back to default NLTK data dir
+    # SSM for Lambdas; local dev falls back to default NLTK data dir
     try:
         nltkDataPath = getSsmParam("/review-app/nltk/data-path")
     except Exception:
         nltkDataPath = os.getenv("NLTK_DATA", "")
     if nltkDataPath and os.path.isdir(nltkDataPath):
         nltk.data.path.insert(0, nltkDataPath)
+
     # minimal downloads if not pre-bundled (local dev fallback)
     for resource in ["punkt_tab", "stopwords", "wordnet", "vader_lexicon"]:
         try:
@@ -86,7 +85,7 @@ def _initNltk():
 _initNltk()
 
 
-# --- business logic: preprocessing ---
+#  lambda : preprocessing
 
 def preprocess(review: dict) -> dict:
     # combine summary and reviewText into one token stream
@@ -108,7 +107,7 @@ def preprocess(review: dict) -> dict:
     return result
 
 
-# --- business logic: profanity check ---
+# lambda: profanity check
 
 _profanityFilter = None
 
@@ -129,7 +128,7 @@ def profanityCheck(review: dict) -> dict:
     return {**review, "isImpolite": False, "badWord": ""}
 
 
-# --- business logic: sentiment classification ---
+# lambda: sentiment classification 
 
 def sentimentClassify(review: dict) -> dict:
     text = f"{review.get('summary', '')} {review.get('reviewText', '')}"
@@ -148,7 +147,7 @@ def sentimentClassify(review: dict) -> dict:
     return result
 
 
-# --- business logic: impolite counter + ban rule ---
+# lambda: impolite counter + ban rule 
 
 def updateImpoliteCounter(
     reviewerID: str,
@@ -169,9 +168,7 @@ def updateImpoliteCounter(
 def isBanned(counter: int, threshold: int) -> bool:
     return counter > threshold
 
-
-# --- transport layer: getInput ---
-
+# transport : read events
 def getInput(
     event: dict,
     bucket: str | None = None,          # S3 bucket to read from; None or non-S3-event = direct
@@ -193,8 +190,7 @@ def getInput(
     return json.loads(body)
 
 
-# --- transport layer: sendOutput ---
-
+# transport : send events
 def sendOutput(
     result: dict,
     bucket: str | None = None,           # S3 bucket to upload to
@@ -206,7 +202,7 @@ def sendOutput(
     _getS3().put_object(Bucket=bucket, Key=key, Body=payload)
 
 
-# --- DynamoDB helpers ---
+#  DynamoDB helpers
 
 def getSsmParam(name: str) -> str:
     resp = _getSsm().get_parameter(Name=name)
@@ -228,10 +224,8 @@ def writeReviewToDdb(table: str, review: dict):
         item["tokens"] = {"SS": uniqueTokens}
     _getDdb().put_item(TableName=table, Item=item)
 
+# unwrap INSERT/MODIFY records from a DynamoDB Stream to dicts keyed by attribute name.
 
-# Extract INSERT/MODIFY records from a DynamoDB Stream event batch.
-# Each record is a type-tagged DynamoDB item; this strips the type wrappers
-# and returns plain Python dicts keyed by attribute name.
 def parseDdbStream(event: dict) -> list[dict]:
     records = []
     for rec in event.get("Records", []):  # events are coming in batches by 10, see --batch-size for MiniStack
