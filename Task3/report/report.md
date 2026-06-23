@@ -180,13 +180,21 @@ NLTK corpora (`punkt_tab`, `stopwords`, `wordnet`, `vader_lexicon`) are pre-down
 
 ## 4. Results
 
-Results are computed by `dumpMetrics.py`, which scans `reviewsTable` and `aggregatesTable` in DynamoDB and writes a CSV summary to `data/output.csv`. The pipeline was executed locally on MiniStack 1.3.63 with the full `reviews_devset.json` dataset (78829 lines). The reported metrics are:
+Results are computed by `dumpMetrics.py`, which scans `reviewsTable` and `aggregatesTable` in DynamoDB and writes a CSV summary to `data/output.csv`. The pipeline was executed locally on MiniStack 1.3.63 with the full `reviews_devset.json` dataset (78829 lines).
+
+Two sentiment classifications are reported: **VADER-assessed** (algorithmic, from review text) and **user-marked** (ground truth, from the `overall` star rating: 1-2 stars = negative, 3 = neutral, 4-5 = positive). Both labels are stored in each DynamoDB record.
 
 | Metric | Value |
 |--------|-------|
+| **VADER-assessed sentiment** | |
 | Positive reviews | 67520 |
 | Neutral reviews | 1573 |
 | Negative reviews | 9734 |
+| **User-marked sentiment (overall)** | |
+| Positive reviews | 62196 |
+| Neutral reviews | 6644 |
+| Negative reviews | 9989 |
+| **Profanity and bans** | |
 | Reviews failing profanity check | 3126 |
 | Banned users | 1 |
 | Banned user IDs | A320TMDV6KCFU |

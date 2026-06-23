@@ -143,7 +143,17 @@ def sentimentClassify(review: dict) -> dict:
     else:
         label = "neutral"
 
-    result = {**review, "sentiment": label, "sentimentScores": scores}
+    # user-marked sentiment from the overall star rating (ground truth)
+    overall = review.get("overall", 3.0)
+    if overall >= 4.0:
+        userLabel = "positive"
+    elif overall <= 2.0:
+        userLabel = "negative"
+    else:
+        userLabel = "neutral"
+
+    result = {**review, "sentiment": label, "sentimentScores": scores,
+              "userSentiment": userLabel}
     return result
 
 
@@ -215,6 +225,8 @@ def writeReviewToDdb(table: str, review: dict):
         "asin": {"S": review.get("asin", "")},
         "sentiment": {"S": review.get("sentiment", "")},
         "isImpolite": {"BOOL": review.get("isImpolite", False)},
+        "userSentiment": {"S": review.get("userSentiment", "")},
+        "overall": {"N": str(review.get("overall", 3.0))},
     }
     # DynamoDB SS rejects empty lists and duplicates -- deduplicate before storing
     if review.get("badWord"):

@@ -38,9 +38,11 @@ def main():
     reviews = scanAll(reviewsTable)
 
     positive = neutral = negative = profanityFails = 0
+    userPositive = userNeutral = userNegative = 0
     for item in reviews:
         sentiment = item.get("sentiment", {}).get("S", "")
         isImpolite = item.get("isImpolite", {}).get("BOOL", False)
+        userSentiment = item.get("userSentiment", {}).get("S", "")
         if sentiment == "positive":
             positive += 1
         elif sentiment == "negative":
@@ -49,6 +51,12 @@ def main():
             neutral += 1
         if isImpolite:
             profanityFails += 1
+        if userSentiment == "positive":
+            userPositive += 1
+        elif userSentiment == "negative":
+            userNegative += 1
+        else:
+            userNeutral += 1
 
     print(f"Scanning {aggTable} ...")
     aggregates = scanAll(aggTable)
@@ -69,9 +77,13 @@ def main():
         w.writerow(["profanity_failures", profanityFails])
         w.writerow(["banned_users", len(bannedUsers)])
         w.writerow(["banned_user_ids", ", ".join(bannedUsers)])
+        w.writerow(["user_positive_reviews", userPositive])
+        w.writerow(["user_neutral_reviews", userNeutral])
+        w.writerow(["user_negative_reviews", userNegative])
 
     print(f"Wrote {outPath}")
     print(f"  positive={positive} neutral={neutral} negative={negative}")
+    print(f"  user_positive={userPositive} user_neutral={userNeutral} user_negative={userNegative}")
     print(f"  profanity_failures={profanityFails}")
     print(f"  banned_users={len(bannedUsers)} [{', '.join(bannedUsers[:10])}{'...' if len(bannedUsers) > 10 else ''}]")
 
