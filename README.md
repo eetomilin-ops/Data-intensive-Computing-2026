@@ -185,128 +185,56 @@ For **local** run , it's on 4040 port , http://localhost:4040/ will do.
 
 Local AWS emulator (MiniStack 1.3.63) + 4 Lambda functions in an S3-staged event-driven chain.
 
-### Prerequisites
+### Quick start
 
 ```bash
 cd Task3/src
 pip install -r requirements.txt
-```
 
-### Quick start
-
-```bash
 # terminal 1: start MiniStack
 source ../../.venv/bin/activate && ministack &
 
-# terminal 2: run full pipeline (deploy + process + metrics)
+# terminal 2: full pipeline (deploy + run + metrics)
 bash runMe.sh
 
-# terminal 3: monitor progress
+# terminal 3: watch progress
 bash monitor.sh
 ```
 
-### All flags
+### Flags
 
-| Flag | What it does |
-|------|-------------|
-| (none) | Full pipeline: `--deploy` + `--run` + `--dumpMetrics` |
-| `--deploy` | Create S3 buckets, DynamoDB tables, Lambda functions, wire triggers |
-| `--run` | Upload dataset in batches with backpressure, drain, dump metrics |
-| `--resume` | Recover after crash: kill stale workers, scan DDB for already-processed reviews, re-upload only missing ones |
-| `--testFunctions` | 11 functional tests (pure logic, no MiniStack needed) |
-| `--testS3` | 4 integration tests (requires deployed resources + MiniStack) |
-| `--testAll` | Both test suites |
+| Flag | Effect |
+|------|--------|
+| (none) | Deploy all resources, run full dataset, dump metrics |
+| `--deploy` | Create S3 buckets, DynamoDB tables, Lambda functions, wire triggers, push SSM params |
+| `--run` | Upload dataset in batches with backpressure, replay stragglers, dump metrics |
+| `--resume` | Kill stale workers, scan DDB for processed pairs, re-upload only missing reviews, dump metrics |
 | `--dumpMetrics` | Scan DynamoDB, write `data/output.csv` |
-| `--batchSize=N` | Custom batch size (default 500) |
-| `--dedup` | Pre-dedup input on `(reviewerID, asin)` before upload (ignored in `--resume`) |
+| `--batchSize=N` | Upload batch size (default 500) |
+| `--dedup` | Pre-filter duplicate `(reviewerID, asin)` pairs from input (ignored in `--resume`) |
+| `--testFunctions` | 11 unit tests, no MiniStack |
+| `--testS3` | 4 integration tests, needs MiniStack + `--deploy` |
+| `--testAll` | Both suites |
 
-### Common flag combinations
+### Common usage
 
 ```bash
-# first run ever
-bash runMe.sh
-
-# re-run without redeploying (MiniStack still alive, resources exist)
-bash runMe.sh --run
-
-# re-run with smaller batches for slower machines
-bash runMe.sh --run --batchSize=200
-
-# crash recovery (auto-kills stale Lambda workers, re-uploads missing reviews)
-bash runMe.sh --resume
-
-# crash recovery with custom batch size
-bash runMe.sh --resume --batchSize=200
-
-# run with input dedup (removes multi-category duplicate (reviewerID,asin) pairs)
-bash runMe.sh --run --dedup
-
-# deploy only, no processing
-bash runMe.sh --deploy
-
-# run only tests, no pipeline
-bash runMe.sh --testAll
-
-# dump metrics from existing DDB state (no processing)
-bash runMe.sh --dumpMetrics
+bash runMe.sh                         # first run
+bash runMe.sh --run                   # re-run, skip deploy
+bash runMe.sh --run --batchSize=200   # slower machine
+bash runMe.sh --resume                # crash recovery
+bash runMe.sh --deploy                # deploy only
+bash runMe.sh --testAll               # tests only
+bash runMe.sh --dumpMetrics           # metrics only
 ```
-
-### --resume behavior
-
-On crash recovery, `--resume` performs these steps in order:
-
-1. Kills all stale Lambda worker processes left behind by the crashed run (MiniStack does not reap idle workers automatically).
-2. Scans `reviewsTable` for all `(reviewerID, asin)` pairs already processed.
-3. Clears all three staging buckets of stale in-flight objects.
-4. Reads the full dataset, uploading only reviews NOT already in DynamoDB.
-5. Applies the same batch backpressure and drain logic as `--run`.
-6. Runs `dumpMetrics` on completion.
-
-The `--dedup` flag is ignored in `--resume` mode because the DDB done-set scan already handles multi-category duplicates via the composite primary key.
 
 ### monitor.sh
 
-Polls DDB table counts + S3 object counts every 10s:
+Polls DDB + S3 counts every 10s. Same snapshot twice = converged.
 
 ```
 [12:34:56] DDB=45200 agg=76834 | S3 in=78827 pf=45200 sa=45198
 ```
-
-When the same snapshot appears twice, the pipeline has converged (finished or stalled). Run from repo root:
-
-```bash
-bash Task3/src/monitor.sh
-```
-
-### Tests
-
-| Flag | What it runs | Requires |
-|------|-------------|----------|
-| `--testFunctions` | 11 functional tests: preprocessing, profanity, sentiment, impolite counter, ban logic, transport | Nothing -- pure Python, no MiniStack |
-| `--testS3` | 4 integration tests: S3 transport, preprocessing Lambda writes to staging, full S3 chain to DDB, ban rule end-to-end | MiniStack running + `--deploy` done |
-| `--testAll` | Both suites (15 tests total) | MiniStack running + `--deploy` done |
-
-Test fixtures live in `Task3/src/tests/data/` (reviewClean, reviewProfane, reviewNegative, reviewNeutral). Integration tests auto-clean up S3 objects and DDB rows after each run.
-
-```bash
-# functional tests only, anytime
-bash runMe.sh --testFunctions
-
-# integration tests after deploy
-bash runMe.sh --deploy
-bash runMe.sh --testS3
-
-# everything
-bash runMe.sh --deploy
-bash runMe.sh --testAll
-```
-
-### Known MiniStack limitations
-
-- **Lambda workers never reaped**: MiniStack spawns one OS process per S3 notification and never kills idle workers. After a crash, workers persist at 0% CPU but hold TCP sockets to the MiniStack HTTP server, saturating its single-process event loop. This causes `ConnectionClosedError` on subsequent S3 API calls. `--resume` works around this by running `pkill -f '_worker.py'` before re-uploading. Real AWS Lambda recycles execution environments after a few minutes of inactivity.
-- **Reserved concurrency ignored**: `lambdaConcurrency=5` is pushed to SSM but MiniStack ignores it -- it spawns workers unconditionally per notification. The backpressure loop in `runMe.sh` compensates by throttling upload batches.
-- **S3 event delivery gaps**: ~0.1% of S3 ObjectCreated notifications are silently dropped under load. `_replayUnprocessed` rescans staging buckets after the final batch and re-invokes downstream Lambdas for any missing reviews.
-- **LocalStack issue #13195** confirms these are acknowledged bugs (closed as "not planned" when the repo was archived Mar 2026).
 
 ### Architecture
 
@@ -331,8 +259,11 @@ S3 input  -->  preprocessing  -->  S3 staging-profanity  -->  profanity
                                                            DynamoDB aggregatesTable
 ```
 
-Two sentiment classifications are stored in `reviewsTable`:
-- **VADER-assessed** (algorithmic, from review text: positive/neutral/negative)
-- **User-marked** (ground truth, from `overall` star rating: 1-2=negative, 3=neutral, 4-5=positive)
+Two sentiment labels per review: VADER-assessed (from text) and user-marked (from `overall` star rating: 1-2=negative, 3=neutral, 4-5=positive). Results in `Task3/data/output.csv`.
 
-Results are dumped to `Task3/data/output.csv` with both sentiment breakdowns, profanity failure count, and banned users.
+### Known MiniStack issues
+
+- Workers spawn per S3 notification and are never reaped -- idle workers saturate the event loop, causing `ConnectionClosedError`. `--resume` runs `pkill -f '_worker.py'` before re-uploading. Real AWS recycles idle execution environments automatically.
+- Reserved concurrency (`lambdaConcurrency=5`) is ignored -- MiniStack spawns unconditionally. Batch backpressure compensates.
+- ~0.1% of S3 events silently dropped under load. `_replayUnprocessed` rescans staging buckets post-upload and re-invokes downstream Lambdas.
+- [LocalStack #13195](https://github.com/localstack/localstack/issues/13195) -- acknowledged, closed "not planned" when repo archived Mar 2026.
