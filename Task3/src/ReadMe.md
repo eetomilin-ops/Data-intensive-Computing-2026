@@ -77,52 +77,17 @@ use `--resume` instead of `--run` to avoid reprocessing reviews already in Dynam
 
 ## Worklog
 
-### MiniStack does not reap idle Lambda workers -- aggressive flush required on resume
-
-MiniStack spawns one OS process per S3 notification as its Lambda worker model.
-When the pipeline crashes (S3 `PutObject` HTTP 500, connection resets from an
-overloaded event loop), these workers stay alive but idle -- they hold TCP
-sockets to MiniStack's HTTP server and wait indefinitely for events that were
-never queued. Observed: 72 workers (38 profanity, 19 sentiment, 13 preprocessing,
-1 reducer) persisted after a crash, all at 0% CPU but collectively saturating
-MiniStack's single-process event loop. This caused `ConnectionClosedError` on
-subsequent S3 API calls and froze `reviewsTable` at the crash-point count.
-
-Real AWS Lambda has no equivalent problem: the Lambda service aggressively
-recycles execution environments after a few minutes of inactivity, and S3 event
-delivery is fully decoupled from worker lifecycle. On AWS, a crashed pipeline
-leaves no lingering workers -- new S3 uploads trigger fresh invocations
-automatically.
-
-**Fix applied**: `--resume` now runs `pkill -f '_worker.py'` before re-uploading.
-This kills all stale workers in one shot. MiniStack remains alive; all S3 data,
-DynamoDB tables, and Lambda function definitions are untouched. Fresh workers
-spawn when new S3 events arrive for the resumed uploads.
+| Problem | Fix | Where |
+|---------|-----|-------|
+| Stale Lambda workers persist after crash, saturate MiniStack event loop, cause `ConnectionClosedError` | `pkill -f '_worker.py'` before re-uploading | `runMe.sh` --resume dispatch |
+| `lam.invoke()` tight loop in `_replayUnprocessed` spawns workers faster than MiniStack can drain, triggering same saturation | `time.sleep(0.05)` between invocations | `runMe.sh` _replayUnprocessed inline Python |
+| S3 PutObject thread exhaustion at high throughput (`RuntimeError: can't start new thread`) | Batch upload with DDB backpressure (`pipelineBatchThreshold=0.9`, 3s poll) | `settings.py` + `runMe.sh` runFullPipeline |
+| `--dedup` redundant in resume (DDB done-set scan already deduplicates by composite key) | Ignore `--dedup` flag in `runResume`, always use original file | `runMe.sh` runResume |
+| `overall` field not used despite assignment requiring it | Compute `userSentiment` from star rating alongside VADER, store both in DDB | `common.py` sentimentClassify + writeReviewToDdb |
 
 ## Architecture
 
 The pipeline implements a 5-stage serverless chain triggered by S3 upload:
-
-```
-S3 input bucket  -->  preprocessing  -->  S3 staging-profanity  -->  profanity
-                                                                         |
-                                                                         v
-                                                                  S3 staging-sentiment
-                                                                         |
-                                                                         v
-                                                                     sentiment
-                                                                         |
-                                                                         v
-                                                                  DynamoDB reviewsTable
-                                                                         |
-                                                                   DDB Stream
-                                                                         |
-                                                                         v
-                                                                      reducer
-                                                                         |
-                                                                         v
-                                                                  DynamoDB aggregatesTable
-```
 
 Each Lambda reads its config from **SSM Parameter Store only** — no env var config. Bucket names, table names, threshold, and NLTK data path are pushed to SSM at deploy time by `pushSettings.sh`. The `settings.py` file is the single source of truth for SSM values and is never imported by Lambdas.
 
