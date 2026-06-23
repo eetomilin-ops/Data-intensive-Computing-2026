@@ -67,11 +67,37 @@ When the same snapshot appears twice, the pipeline has converged (finished or st
 When MiniStack crashes mid-pipeline (thread exhaustion, `can't start new thread`),
 use `--resume` instead of `--run` to avoid reprocessing reviews already in DynamoDB:
 
-1. Scans `reviewsTable` for all `(reviewerID, asin)` pairs already processed.
-2. Clears all three staging buckets (in-flight objects from the crashed run are stale).
-3. Reads the full dataset from the beginning, uploading only reviews whose
+1. Kills stale Lambda worker processes left behind by the crashed run
+   (see worklog note below).
+2. Scans `reviewsTable` for all `(reviewerID, asin)` pairs already processed.
+3. Clears all three staging buckets (in-flight objects from the crashed run are stale).
+4. Reads the full dataset from the beginning, uploading only reviews whose
    `(reviewerID, asin)` is NOT already in DynamoDB.
-4. Applies the same DDB backpressure (`pipelineBatchThreshold`) and drain logic.
+5. Applies the same DDB backpressure (`pipelineBatchThreshold`) and drain logic.
+
+## Worklog
+
+### MiniStack does not reap idle Lambda workers -- aggressive flush required on resume
+
+MiniStack spawns one OS process per S3 notification as its Lambda worker model.
+When the pipeline crashes (S3 `PutObject` HTTP 500, connection resets from an
+overloaded event loop), these workers stay alive but idle -- they hold TCP
+sockets to MiniStack's HTTP server and wait indefinitely for events that were
+never queued. Observed: 72 workers (38 profanity, 19 sentiment, 13 preprocessing,
+1 reducer) persisted after a crash, all at 0% CPU but collectively saturating
+MiniStack's single-process event loop. This caused `ConnectionClosedError` on
+subsequent S3 API calls and froze `reviewsTable` at the crash-point count.
+
+Real AWS Lambda has no equivalent problem: the Lambda service aggressively
+recycles execution environments after a few minutes of inactivity, and S3 event
+delivery is fully decoupled from worker lifecycle. On AWS, a crashed pipeline
+leaves no lingering workers -- new S3 uploads trigger fresh invocations
+automatically.
+
+**Fix applied**: `--resume` now runs `pkill -f '_worker.py'` before re-uploading.
+This kills all stale workers in one shot. MiniStack remains alive; all S3 data,
+DynamoDB tables, and Lambda function definitions are untouched. Fresh workers
+spawn when new S3 events arrive for the resumed uploads.
 
 ## Architecture
 
