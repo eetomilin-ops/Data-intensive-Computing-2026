@@ -77,13 +77,30 @@ use `--resume` instead of `--run` to avoid reprocessing reviews already in Dynam
 
 ## Worklog
 
-| Problem | Fix | Where |
-|---------|-----|-------|
-| Stale Lambda workers persist after crash, saturate MiniStack event loop, cause `ConnectionClosedError` | `pkill -f '_worker.py'` before re-uploading | `runMe.sh` --resume dispatch |
-| `lam.invoke()` tight loop in `_replayUnprocessed` spawns workers faster than MiniStack can drain, triggering same saturation | `time.sleep(0.05)` between invocations | `runMe.sh` _replayUnprocessed inline Python |
-| S3 PutObject thread exhaustion at high throughput (`RuntimeError: can't start new thread`) | Batch upload with DDB backpressure (`pipelineBatchThreshold=0.9`, 3s poll) | `settings.py` + `runMe.sh` runFullPipeline |
-| `--dedup` redundant in resume (DDB done-set scan already deduplicates by composite key) | Ignore `--dedup` flag in `runResume`, always use original file | `runMe.sh` runResume |
-| `overall` field not used despite assignment requiring it | Compute `userSentiment` from star rating alongside VADER, store both in DDB | `common.py` sentimentClassify + writeReviewToDdb |
+### Stale Lambda workers persist after crash
+MiniStack spawns one OS process per S3 notification and never reaps idle workers. After a crash, workers hold TCP sockets to the HTTP server, saturating its single-process event loop and causing `ConnectionClosedError` on subsequent API calls. Observed: 72 workers (38 profanity, 19 sentiment, 13 preprocessing, 1 reducer) at 0% CPU after a crash.
+Fixed: `pkill -f '_worker.py'` before re-uploading.
+Where: `runMe.sh` --resume dispatch.
+
+### Replay lam.invoke() saturates MiniStack
+`_replayUnprocessed` calls `lam.invoke()` in a tight loop, spawning workers faster than MiniStack can drain. After ~150 invocations the event loop saturates and drops connections.
+Fixed: `time.sleep(0.05)` between invocations.
+Where: `runMe.sh` _replayUnprocessed inline Python.
+
+### S3 PutObject thread exhaustion
+At high upload throughput MiniStack spawns one thread per S3 notification, hitting the OS thread limit and crashing with `RuntimeError: can't start new thread`.
+Fixed: batch upload with DDB backpressure (`pipelineBatchThreshold=0.9`, 3s poll between batches).
+Where: `settings.py` + `runMe.sh` runFullPipeline.
+
+### --dedup redundant in resume
+DDB done-set scan already deduplicates by composite key `(reviewerID, asin)`. Pre-dedup of the input file is wasted work on a second run.
+Fixed: `runResume` ignores `--dedup`, always uses original file.
+Where: `runMe.sh` runResume.
+
+### overall field unused despite assignment requirement
+Assignment requires `overall` to be taken into consideration; code used only `summary`+`reviewText` for sentiment.
+Fixed: compute `userSentiment` from star rating (1-2=negative, 3=neutral, 4-5=positive) alongside VADER, store both in DDB.
+Where: `common.py` sentimentClassify + writeReviewToDdb.
 
 ## Architecture
 
