@@ -616,6 +616,11 @@ for bucket, targetFn in chain:
             if key not in done:
                 lam.invoke(FunctionName=targetFn, InvocationType='Event', Payload=json.dumps(body))
                 bucketCount += 1
+                # Throttle: MiniStack spawns a worker process per invoke and its
+                # single-threaded event loop saturates after ~150 pending workers,
+                # causing ConnectionResetError.  A 50ms pause between invocations
+                # keeps the worker count bounded and prevents HTTP server overload.
+                import time; time.sleep(0.05)
                 print(f'    REPLAY: {key[0][:20]:20s} / {key[1][:12]:12s}  bucket={bucket:35s}  ->  {targetFn}')
         if not objs.get('IsTruncated'):
             break
