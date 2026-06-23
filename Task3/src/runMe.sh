@@ -736,6 +736,17 @@ case "${1:-}" in
             echo "ERROR: bucket ${bucketInput} not found. Run --deploy first." >&2
             exit 1
         fi
+        # Kill stale Lambda workers left behind by a crashed previous run.
+        # MiniStack spawns one process per S3 notification; after a crash those
+        # workers stay alive but idle, blocking event delivery for new uploads.
+        # Cleaning them here lets MiniStack spawn fresh workers for the resume.
+        local staleWorkers
+        staleWorkers=$(pgrep -f '_worker.py' 2>/dev/null | wc -l | tr -d ' ')
+        if [ "${staleWorkers:-0}" -gt 0 ]; then
+            echo "  Killing ${staleWorkers} stale Lambda workers from previous run ..."
+            pkill -f '_worker.py' 2>/dev/null || true
+            sleep 1
+        fi
         runResume "${BATCH_SIZE:-500}" "$DEDUP"
         dumpMetrics
         ;;
