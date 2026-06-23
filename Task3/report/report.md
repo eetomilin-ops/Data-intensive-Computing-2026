@@ -7,11 +7,11 @@
 
 ## 1. Introduction
 
-This assignment implements an event-driven serverless application on AWS (emulated via MiniStack) to perform profanity checking and sentiment analysis of Amazon customer reviews. The system processes reviews through a staged pipeline of four Lambda functions, triggered entirely by S3 bucket events and DynamoDB Stream events, with all configuration managed through the SSM Parameter Store. The focus is on correct serverless design and event-driven architecture rather than on throughput or accuracy KPIs.
+This assignment implements an event-driven serverless application on AWS (emulated via MiniStack) to perform profanity checking and sentiment analysis of Amazon customer reviews. The system processes reviews through a staged pipeline of four Lambda functions, triggered entirely by S3 bucket events and DynamoDB stream events, with all configuration managed through the SSM parameter store. Project is optimized per task requirements and focused on throughput or accuracy KPIs.
 
 ## 2. Problem Overview
 
-The task defines a five-step processing pipeline applied to each review:
+Task description requires a five-step processing pipeline applied to each review:
 
 | Step | Description |
 |------|-------------|
@@ -23,9 +23,14 @@ The task defines a five-step processing pipeline applied to each review:
 
 ### Architecture constraints
 
-The pipeline must be fully serverless: each stage is a Lambda function, and the chain must be triggered by AWS event sources (S3 ObjectCreated notifications and DynamoDB Stream events). The pipeline starts when a single review JSON object is uploaded to an S3 input bucket. All resource names and configuration values must be read from the SSM Parameter Store at runtime -- no hardcoded values in Lambda code.
+#### from task description :
+ - pipeline must be fully serverless: 
+ - each stage is a Lambda function
+ - chain must be triggered by AWS event sources (S3 ObjectCreated notifications and DynamoDB Stream events).
+ - pipeline starts when a single review JSON object is uploaded to an S3 input bucket
+ - All resource names and configuration values must be read from the SSM Parameter Store at runtime -- no hardcoded values in Lambda code.
 
-The six formal assignment requirements and their implementation mapping are:
+#### as implemented:
 
 | # | Requirement | Implementation |
 |---|-------------|----------------|
@@ -36,19 +41,28 @@ The six formal assignment requirements and their implementation mapping are:
 | 5 | Configuration from SSM Parameter Store | `pushSettings.sh` reads `settings.py` and pushes all values to SSM under `/review-app/`; every Lambda calls `getSsmParam()` at invocation time |
 | 6 | Automated integration tests for all five pipeline steps | 15 pytest tests: 11 functional (pure logic) + 4 integration (MiniStack end-to-end), covering preprocessing, profanity, sentiment, impolite counting, and ban enforcement |
 
-### Data fields
-
-Three fields from each review are specified by the assignment: `summary`, `reviewText`, and `overall`. The `summary` and `reviewText` fields are combined for tokenization, profanity detection, and sentiment analysis. The `overall` rating is preserved through the Lambda chain via dict spread but is not stored in the final DynamoDB record and is not used as a signal in the current analysis logic. The `reviewerID` and `asin` fields are used as the composite primary key in DynamoDB.
-
 ### Dataset
 
-The dataset is `reviews_devset.json`, a 56 MB JSON-lines file containing Amazon review records. Custom test reviews for edge-case coverage are included in the test suite under `tests/data/`.
+Dataset for the pipeline is `reviews_devset.json`, published on LBD cluster. The file 56 MB JSON-lines containing selected Amazon review records. It's not cleaned or preprocessed somehow, except removing multi-category review once at start (see --dedup flag in runner)
+
+### Data fields
+
+Three fields from each review are specified by the assignment: `summary`, `reviewText`, and `overall`. 
+
+`summary` and `reviewText` fields are combined for tokenization, profanity detection, and sentiment analysis. 
+
+`overall` rating is preserved through Lambda chain via dict spread but is not stored in the final DynamoDB record and is not used as a signal in the current logic. 
+
+`reviewerID` and `asin` fields are used as the composite primary key in DynamoDB.
 
 ## 3. Methodology and Approach
 
 ### 3.1 Architecture overview
 
-The system deploys four Lambda functions across three S3 staging buckets and three DynamoDB tables. Every inter-stage handoff uses an S3 ObjectCreated event, satisfying the requirement that all function invocations be triggered by S3 bucket events and/or DynamoDB events.
+Runner deploys four Lambda functions chained by three S3 staging buckets and finishing in DynamoDB . Every inter-stage event transfer uses an S3 ObjectCreated event, satisfying original requirement.
+
+This is normally not needed, we would use direct call with final step as persist 
+
 
 ```mermaid
 sequenceDiagram
@@ -174,8 +188,8 @@ Results are computed by `dumpMetrics.py`, which scans `reviewsTable` and `aggreg
 | Neutral reviews | 1573 |
 | Negative reviews | 9734 |
 | Reviews failing profanity check | 3126 |
-| Banned users | 3 |
-| Banned user IDs | A320TMDV6KCFU, ATMIH8039GOP, AV6QDP8Q0ONK4 |
+| Banned users | 1 |
+| Banned user IDs | A320TMDV6KCFU |
 
 ### Duplicate analysis
 
