@@ -183,7 +183,7 @@ For **local** run , it's on 4040 port , http://localhost:4040/ will do.
 
 ## Task 3 — Serverless Review Analysis
 
-Local AWS emulator (MiniStack 1.3.63) + 4 Lambda functions in an S3-staged event-driven chain.
+Runs on MiniStack (local AWS emulator) with 4 Lambda functions chained via S3 events.
 
 ### Quick start
 
@@ -191,79 +191,44 @@ Local AWS emulator (MiniStack 1.3.63) + 4 Lambda functions in an S3-staged event
 cd Task3/src
 pip install -r requirements.txt
 
-# terminal 1: start MiniStack
+# terminal 1
 source ../../.venv/bin/activate && ministack &
 
-# terminal 2: full pipeline (deploy + run + metrics)
+# terminal 2
 bash runMe.sh
 
-# terminal 3: watch progress
+# terminal 3 (optional)
 bash monitor.sh
 ```
 
 ### Flags
 
-| Flag | Effect |
-|------|--------|
-| (none) | Deploy all resources, run full dataset, dump metrics |
-| `--deploy` | Create S3 buckets, DynamoDB tables, Lambda functions, wire triggers, push SSM params |
-| `--run` | Upload dataset in batches with backpressure, replay stragglers, dump metrics |
-| `--resume` | Kill stale workers, scan DDB for processed pairs, re-upload only missing reviews, dump metrics |
-| `--dumpMetrics` | Scan DynamoDB, write `data/output.csv` |
-| `--batchSize=N` | Upload batch size (default 500) |
-| `--dedup` | Pre-filter duplicate `(reviewerID, asin)` pairs from input (ignored in `--resume`) |
-| `--testFunctions` | 11 unit tests, no MiniStack |
-| `--testS3` | 4 integration tests, needs MiniStack + `--deploy` |
-| `--testAll` | Both suites |
-
-### Common usage
+| Flag | Does |
+|------|------|
+| (none) | Deploy + run full dataset + dump metrics |
+| `--deploy` | Create all resources, push SSM params |
+| `--run` | Upload dataset with backpressure, dump metrics |
+| `--resume` | Crash recovery: kill stale workers, upload only missing reviews, dump metrics |
+| `--dumpMetrics` | Scan DDB, write `data/output.csv` |
+| `--batchSize=N` | Batch size (default 500) |
+| `--dedup` | Dedup input on `(reviewerID, asin)` before upload |
 
 ```bash
 bash runMe.sh                         # first run
 bash runMe.sh --run                   # re-run, skip deploy
-bash runMe.sh --run --batchSize=200   # slower machine
 bash runMe.sh --resume                # crash recovery
-bash runMe.sh --deploy                # deploy only
-bash runMe.sh --testAll               # tests only
+bash runMe.sh --resume --batchSize=200
 bash runMe.sh --dumpMetrics           # metrics only
+```
+
+### Tests
+
+```bash
+bash runMe.sh --testFunctions         # 11 unit tests, no MiniStack needed
+bash runMe.sh --testS3                # 4 integration tests, needs --deploy first
+bash runMe.sh --testAll               # both suites
 ```
 
 ### monitor.sh
 
-Polls DDB + S3 counts every 10s. Same snapshot twice = converged.
-
-```
-[12:34:56] DDB=45200 agg=76834 | S3 in=78827 pf=45200 sa=45198
-```
-
-### Architecture
-
-```
-S3 input  -->  preprocessing  -->  S3 staging-profanity  -->  profanity
-                                                                  |
-                                                                  v
-                                                           S3 staging-sentiment
-                                                                  |
-                                                                  v
-                                                              sentiment
-                                                                  |
-                                                                  v
-                                                           DynamoDB reviewsTable
-                                                                  |
-                                                            DDB Stream
-                                                                  |
-                                                                  v
-                                                               reducer
-                                                                  |
-                                                                  v
-                                                           DynamoDB aggregatesTable
-```
-
-Two sentiment labels per review: VADER-assessed (from text) and user-marked (from `overall` star rating: 1-2=negative, 3=neutral, 4-5=positive). Results in `Task3/data/output.csv`.
-
-### Known MiniStack issues
-
-- Workers spawn per S3 notification and are never reaped -- idle workers saturate the event loop, causing `ConnectionClosedError`. `--resume` runs `pkill -f '_worker.py'` before re-uploading. Real AWS recycles idle execution environments automatically.
-- Reserved concurrency (`lambdaConcurrency=5`) is ignored -- MiniStack spawns unconditionally. Batch backpressure compensates.
-- ~0.1% of S3 events silently dropped under load. `_replayUnprocessed` rescans staging buckets post-upload and re-invokes downstream Lambdas.
-- [LocalStack #13195](https://github.com/localstack/localstack/issues/13195) -- acknowledged, closed "not planned" when repo archived Mar 2026.
+Polls DDB + S3 counts every 10s. Converged when same snapshot appears twice.
