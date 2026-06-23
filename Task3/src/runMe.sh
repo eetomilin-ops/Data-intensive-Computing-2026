@@ -745,7 +745,6 @@ case "${1:-}" in
         # MiniStack spawns one process per S3 notification; after a crash those
         # workers stay alive but idle, blocking event delivery for new uploads.
         # Cleaning them here lets MiniStack spawn fresh workers for the resume.
-        local staleWorkers
         staleWorkers=$(pgrep -f '_worker.py' 2>/dev/null | wc -l | tr -d ' ')
         if [ "${staleWorkers:-0}" -gt 0 ]; then
             echo "  Killing ${staleWorkers} stale Lambda workers from previous run ..."
