@@ -384,7 +384,7 @@ print(uploaded)
 # clear stale staging objects, then upload only the missing ones.
 runResume() {
     local batchSize="${1:-500}"
-    local doDedup="${2:-0}"
+    local doDedup="${2:-0}"  # ignored: DDB done-set scan already deduplicates by composite key
     echo "=== Resuming from DDB snapshot ==="
 
     local dataFile="${SCRIPT_DIR}/../data/reviews_devset.json"
@@ -394,9 +394,10 @@ runResume() {
         hdfs dfs -get /dic_shared/amazon-reviews/full/reviews_devset.json "$dataFile"
     fi
 
-    if [ "$doDedup" -eq 1 ]; then
-        dataFile="$(_dedupInput "$dataFile" | tail -1)"
-    fi
+    # DDB done-set scan is the authoritative dedup for resume -- the
+    # composite key (reviewerID, asin) already handles multi-category
+    # duplicates by skipping any pair already in reviewsTable.
+    # No need to pre-dedup the input file on a second run.
     local totalLines
     totalLines=$(wc -l < "$dataFile" | tr -d ' ')
     echo "  Total reviews: ${totalLines}"
