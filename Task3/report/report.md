@@ -51,7 +51,7 @@ Three fields from each review are specified by the assignment: `summary`, `revie
 
 `summary` and `reviewText` fields are combined for tokenization, profanity detection, and sentiment analysis. 
 
-`overall` rating is preserved through Lambda chain via dict spread but is not stored in the final DynamoDB record and is not used as a signal in the current logic. 
+`overall` rating is preserved through Lambda chain via dict spread and accumulated in db to calculate metrics. 
 
 `reviewerID` and `asin` fields are used as the composite primary key in DynamoDB.
 
@@ -61,8 +61,9 @@ Three fields from each review are specified by the assignment: `summary`, `revie
 
 Runner deploys four Lambda functions chained by three S3 staging buckets and finishing in DynamoDB . Every inter-stage event transfer uses an S3 ObjectCreated event, satisfying original requirement.
 
-This is normally not needed, we would use direct call with final step as persist 
+This is normally not needed, direct call with final step as persist is enough to solve the problem . Direct calls are faster (no event routine) but task explicitly requires S3/DynamoDb messaging, so sequence as below.
 
+DLQ is implemented only for last step (opt block) because we have implicit state storage as buckets and replay anyway (see comments below). The only place where losses can possibly occur is last save step in DynamoDB. (never happen actually) 
 
 ```mermaid
 sequenceDiagram
@@ -113,7 +114,7 @@ sequenceDiagram
 
 All four Lambdas share a single `common.py` module containing the business logic (`preprocess`, `profanityCheck`, `sentimentClassify`, `updateImpoliteCounter`) and transport helpers (`getInput`, `sendOutput`, `parseDdbStream`, `writeReviewToDdb`). NLTK resources are initialized once per cold start; warm invocations pay zero init overhead.
 
-### 3.3 AWS resources
+### 3.3 MiniStack resources
 
 **S3 buckets (3):**
 - `review-app-input` -- receives raw review JSON objects; triggers `preprocessing` via S3 ObjectCreated notification. EventBridge is also enabled on this bucket (`EventBridgeConfiguration: {}`) as recommended in the assignment Tips & Tricks, though the primary trigger path uses direct `LambdaFunctionConfigurations`.
@@ -145,24 +146,40 @@ All configuration originates in `src/settings.py` as the single source of truth.
 
 ### 3.5 Batch feeding and backpressure
 
-The `runMe.sh` script reads `reviews_devset.json` and uploads reviews in configurable batches (default 500). After each batch, it polls `reviewsTable.ItemCount` (a metadata call, not a scan) every 3 seconds and waits until the DynamoDB count reaches `pipelineBatchThreshold` (0.9) times the uploaded count. This backpressure prevents MiniStack's S3 event delivery threads from exhausting the system thread limit -- a known issue where MiniStack spawns one Python thread per S3 ObjectCreated notification, causing `RuntimeError: can't start new thread` at high throughput.
+It turns out that Ministack 
+a) runs in a single PID spawning sub process\
+b) does not free lambdas resources correctly.\
+c) doesn't autobalance on input, hits thread limit and discards events
 
-Lambda reserved concurrency is set to 5 per function, capping total concurrent executions at 20 across all four Lambdas. This keeps the MiniStack process within the macOS per-process thread limit (5568) while targeting approximately 15 reviews/second throughput (actual sustained throughput measured at ~8.5 reviews/second on the full dataset).
+All these problems require extra balancing that implemented as below
+
+`runMe.sh` script reads `reviews_devset.json` and uploads reviews in configurable batches (default 500). After each batch, it polls `reviewsTable.ItemCount` every 3 seconds and waits until the DynamoDB count reaches `pipelineBatchThreshold` (0.9) times the uploaded count. 
+
+This backpressure prevents MiniStack's S3 event delivery threads from exhausting the system thread limit , it is seen as `RuntimeError: can't start new thread` at high throughput.
+And usually happens when Ministack
+spawns next Python thread per S3 ObjectCreated notification.
+
+Lambda reserved concurrency is set to 5 per function, capping total concurrent executions at 20 across all four Lambdas. 
+These numbers keeps the MiniStack process within the macOS per-process thread limit  with reasonable speed, and should be adjusted in settings for other platforms. Actual sustained throughput measured is ~8.5 reviews/second.
 
 ### 3.6 Drain and resume
 
-After the final batch, `_replayUnprocessed` polls DynamoDB until all uploaded reviews have landed, then scans all three staging buckets and re-delivers any stale objects whose `(reviewerID, asin)` pair is missing from DynamoDB, compensating for MiniStack's occasional S3 event delivery gaps (~0.1% of uploads).
+During all experiments, roughly 0.1% of events just disappear, for no reason. We could not isolate problem , so added replaying routine to compensate losses. The event is in S3 but it just not fired next. 
 
-The `--resume` mode supports crash recovery: it scans `reviewsTable` for all already-processed `(reviewerID, asin)` pairs, clears stale staging objects, and uploads only missing reviews with the same backpressure logic.
+After the final batch, `_replayUnprocessed` polls DynamoDB until all uploaded reviews have landed, then scans all three staging buckets and re-delivers any stale objects whose `(reviewerID, asin)` pair is missing from DynamoDB. 
+
+Runner supports `--resume` mode for crash recovery: it scans `reviewsTable` for all already-processed `(reviewerID, asin)` pairs, clears stale staging objects, and uploads only missing reviews with the same backpressure logic.
 
 ### 3.7 Testing
 
-The test suite has 15 tests across two files:
+There are 15 unit tests folded in two files:
 
-- `testFunc.py` (11 tests): pure business-logic unit tests requiring no MiniStack. Covers preprocessing tokenization, stopword removal, lemmatization; profanity detection and clean-pass; sentiment classification of positive/negative/neutral reviews; impolite counter increment and ban threshold; direct-mode `getInput`.
-- `testS3.py` (4 tests): integration tests requiring a running MiniStack with deployed resources. Covers S3-mode `getInput` transport; preprocessing Lambda writing to staging bucket; full S3 chain producing a correct DynamoDB record; four impolite reviews from one reviewer triggering a ban in `aggregatesTable`.
+`testFunc.py` (11 tests):covers lambdas and general logic unit tests requiring no MiniStack. 
 
-Test fixtures load review JSON from `tests/data/` (reviewClean, reviewProfane, reviewNegative, reviewNeutral). Boto3 client fixtures (S3, SSM, Lambda, DynamoDB) are session-scoped and auto-configured with MiniStack test credentials.
+`testS3.py` (4 tests): integration tests requiring a running MiniStack with deployed resources.
+Verifies transport, writing to bucket, writing DynamoDB, impolite ban
+
+Tests require JSON in `tests/data/` and auto-configured with MiniStack test credentials.
 
 ### 3.8 Technology stack
 
@@ -172,17 +189,26 @@ Test fixtures load review JSON from `tests/data/` (reviewClean, reviewProfane, r
 | MiniStack | 1.3.63 (AWS emulator on LBD cluster); ephemeral -- all resources must be recreated on restart |
 | boto3 | AWS SDK (S3, DynamoDB, SSM, Lambda clients) |
 | NLTK | Tokenization (punkt_tab), stopwords, WordNet lemmatizer, VADER sentiment; data pre-downloaded and bundled in Lambda ZIP as recommended in Tips & Tricks |
-| profanityfilter | Bad-word detection with chunked scanning (2000-char windows to avoid regex timeouts) |
+| profanityfilter | Bad-word detection with chunked scanning (foreced 2000-char windows to avoid regex timeouts, there are big reviews) |
 | pytest | Test framework (15 tests: 11 functional + 4 integration) |
 | awscli | AWS CLI for resource management in `runMe.sh` and `pushSettings.sh` |
 
-NLTK corpora (`punkt_tab`, `stopwords`, `wordnet`, `vader_lexicon`) are pre-downloaded and included in each Lambda's ZIP archive under `/opt/nltk_data`, following the pattern described in the assignment Tips & Tricks. The `STAGE=local` and `MINISTACK_ENDPOINT` environment variables are set on every Lambda at deploy time so the shared `common.py` module can resolve the MiniStack endpoint without hardcoded values. Lambda ZIP archives include `handler.py`, `common.py`, `settings.py`, and pip dependencies installed into a `package/` subdirectory -- the same structure used by the tutorial Resizer Lambda.
+### 3.9 Deployment features
+NLTK corpora (`punkt_tab`, `stopwords`, `wordnet`, `vader_lexicon`) are pre-downloaded and included in each Lambda's ZIP archive under `/opt/nltk_data`, following the pattern described in Tips & Tricks.
+
+`STAGE=local` and `MINISTACK_ENDPOINT` environment variables are set on every Lambda at deploy time, so shared `common.py` module can resolve MiniStack endpoint <i>without hardcoded</i> values.
+
+Lambda ZIP archives include `handler.py`, `common.py`, `settings.py`, and pip dependencies installed into a `package`/ subdirectory akin to structure in tutorial .
 
 ## 4. Results
 
-Results are computed by `dumpMetrics.py`, which scans `reviewsTable` and `aggregatesTable` in DynamoDB and writes a CSV summary to `data/output.csv`. The pipeline was executed locally on MiniStack 1.3.63 with the full `reviews_devset.json` dataset (78829 lines).
+Results are computed by `dumpMetrics.py`, which scans `reviewsTable` and `aggregatesTable` in DynamoDB then writes a CSV summary to `data/output.csv`. 
 
-Two sentiment classifications are reported: **VADER-assessed** (algorithmic, from review text) and **user-marked** (ground truth, from the `overall` star rating: 1-2 stars = negative, 3 = neutral, 4-5 = positive). Both labels are stored in each DynamoDB record.
+Two sentiment classifications are reported:
+ - **VADER-assessed**  algorithmic, from review text)
+ - **user-marked**  original `overall` from JSON ( 1-2:negative, 3:neutral, 4-5:positive). 
+ 
+Both labels are stored in each DynamoDB record.
 
 | Metric | Value |
 |--------|-------|
@@ -210,21 +236,23 @@ The dataset contains 78829 lines yielding 78827 unique `(reviewerID, asin)` pair
 | 2 | A2SB75CW5MXA1P | B005ADNUIG | 32795 | Sports_and_Outdoor |
 | 2 | A2SB75CW5MXA1P | B005ADNUIG | 47533 | Clothing_Shoes_and_Jewelry |
 
-All nine fields are identical within each pair **except `category`**. These are not data-quality errors -- they are legitimate multi-category entries where the same product (asin) is listed under two product categories in Amazon's catalog. The same review by the same reviewer is therefore emitted twice with different category labels. This is a known characteristic of Amazon review datasets: a single ASIN can belong to multiple browse nodes.
+All nine fields in json are identical within each pair **except `category`**. 
+These records are not data quality errors. They are legitimate multi-category entries where the same product (asin) is listed under two product categories in Amazon's catalog.
 
-What happens at write time: `reviewsTable` uses composite primary key `(reviewerID, asin)`, so the second write of each pair overwrites the first. The winning categories in DDB are **Kindle_Store** (pair 1) and **Clothing_Shoes_and_Jewelry** (pair 2) -- the later lines by position in the file. The earlier category per pair is silently discarded. This does not affect sentiment or profanity counts because all other fields are identical, so the overwritten item carries identical `sentiment` and `profanityFlag` values.
+The same review by the same reviewer is therefore emitted twice with different category labels. 
 
-No pre-cleaning is required: the composite-key overwrite is a correct and intended behaviour for this table design. Pre-filtering on `(reviewerID, asin)` uniqueness would arbitrarily discard one category per product without a principled criterion for choosing which to keep. A production system that needed to preserve multi-category information would model the relationship differently (e.g. a separate category-index table or a String Set attribute), but that is outside the scope of this assignment.
+Problem at write time: `reviewsTable` uses composite primary key `(reviewerID, asin)`, so the second write of each pair overwrites the first. The earlier category per pair is silently discarded. This does not affect sentiment or profanity counts because all other fields are identical, but spoils control counts. To avoid this --dedup flag is added to runner.
 
-Pipeline runtime: approximately 2 hours 35 minutes (18:17-20:50), processing ~8.5 reviews/second sustained. The bottleneck is MiniStack's single-process GIL serialization of VADER sentiment analysis -- the slowest Lambda stage at ~200ms per review.
+
+Wall time: approximately 2.5 hours , estimated processing ~8.5 reviews/second, slowest Lambda stage at ~200ms per review.
 
 ## 5. Conclusions
 
-The implemented system satisfies all six formal assignment requirements: four Lambda functions form a complete event-driven chain triggered exclusively by S3 ObjectCreated events and DynamoDB Stream events; all configuration is externalized to the SSM Parameter Store; the pipeline handles the full five-step review processing workflow from tokenization through to ban enforcement; automated tests verify both functional correctness and end-to-end integration.
+Implementation satisfies all assignment requirements: four Lambda functions form a complete event-driven chain triggered exclusively by S3 ObjectCreated events and DynamoDB Stream events.
 
-The S3-staged design, while introducing additional storage operations compared to direct Lambda-to-Lambda invocation, provides a clean separation of concerns, natural observability (each stage's output is inspectable in S3), and strict compliance with the task trigger requirement. The backpressure mechanism and resume capability address MiniStack-specific operational challenges without altering the serverless architecture. The shared `common.py` module and centralized `settings.py` keep the codebase maintainable and consistent across all four Lambda functions.
+S3-staged design, introduce additional storage overhead compared to direct Lambda-to-Lambda invocation, but provides a clear intermediate states and monitoring.
+Proposed backpressure mechanism and resume capability address MiniStack-specific operational challenges without altering the serverless architecture. 
 
-The project is submitted as a single ZIP archive containing this report (`report.pdf`), an execution guide (`instructions.pdf`), and the `src/` directory with all source code, test fixtures, and integration tests. The complete pipeline is executable via a single command (`bash runMe.sh`), which handles deployment, testing, dataset processing, and metrics collection in one automated workflow.
-
+The shared `common.py` module and centralized `settings.py` keep the codebase maintainable and consistent across all four Lambda functions.
 
 
