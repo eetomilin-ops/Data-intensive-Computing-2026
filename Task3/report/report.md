@@ -147,10 +147,12 @@ All configuration originates in `src/settings.py` as the single source of truth.
 
 ### 3.5 Batch feeding and backpressure
 
-MiniStack has a few rough edges when pushed to production scale: it runs as a single process, never reaps idle Lambda workers, and spawns threads without bounds -- eventually hitting the OS limit and discarding events. Three observations shaped the countermeasures:
+MiniStack has several issues when pushed at scale: it runs as a single process, never kills idle Lambda workers, and spawns threads without bounds, eventually hitting OS limit. Such situations cause discarding events. 
+
+Three observations shaped the countermeasures:
 
 - One upload burst of 500 reviews spawns 500 S3 notification threads, which in a three-hop pipeline becomes 1500 threads racing toward the limit.
-- Lambda reserved concurrency is set but ignored by MiniStack -- it spawns workers unconditionally.
+- Lambda reserved concurrency is set (`lambdaConcurrency=5` in settings, pushed to SSM, applied via `put-function-concurrency`) but ignored by MiniStack -- it spawns workers unconditionally.
 - Without throttling, the pipeline chokes on its own throughput.
 
 The runner works around this by uploading reviews in configurable batches separated by a backpressure pause. After each batch it polls DynamoDB and waits for the majority of uploaded reviews to land before sending the next. This gives MiniStack's event delivery time to drain while keeping Lambda workers busy. Sustained throughput settles around 8-9 reviews per second.
