@@ -1,5 +1,5 @@
 <!--this file contains project report, that is to be rendered as PDF -->
-# Assignment 3 -- AWS Lambda Serverless Review Analysis
+# Assignment 3 : AWS Lambda Serverless Review Analysis
 
 **Group 58:** Tomilin Evgenii, Sajan Sonu, Puthumana Kudiyirikkal Neeraj, Taikandi Mohammed Muhammed Musthaq, Krishnan Karun
 
@@ -29,7 +29,7 @@ Task description requires a five-step processing pipeline applied to each review
  - each stage is a Lambda function
  - chain must be triggered by AWS event sources (S3 ObjectCreated notifications and DynamoDB Stream events).
  - pipeline starts when a single review JSON object is uploaded to an S3 input bucket
- - All resource names and configuration values must be read from the SSM Parameter Store at runtime -- no hardcoded values in Lambda code.
+ - All resource names and configuration values must be read from the SSM Parameter Store at runtime, no hardcoded values in Lambda code.
 
 #### as implemented:
 
@@ -118,14 +118,14 @@ All four Lambdas share a single `common.py` module containing the business logic
 ### 3.3 MiniStack resources
 
 **S3 buckets (3):**
-- `review-app-input` -- receives raw review JSON objects; triggers `preprocessing` via S3 ObjectCreated notification. EventBridge is also enabled on this bucket (`EventBridgeConfiguration: {}`) as recommended in the assignment Tips & Tricks, though the primary trigger path uses direct `LambdaFunctionConfigurations`.
-- `review-app-staging-profanity` -- holds preprocessed output; triggers `profanity`
-- `review-app-staging-sentiment` -- holds profanity-check output; triggers `sentiment`
+- `review-app-input` receives raw review JSON objects; triggers `preprocessing` via S3 ObjectCreated notification. EventBridge is also enabled on this bucket (`EventBridgeConfiguration: {}`) as recommended in the assignment Tips & Tricks, though the primary trigger path uses direct `LambdaFunctionConfigurations`.
+- `review-app-staging-profanity` holds preprocessed output; triggers `profanity`
+- `review-app-staging-sentiment` holds profanity-check output; triggers `sentiment`
 
 **DynamoDB tables (3):**
-- `reviewsTable` -- composite key (reviewerID, asin); stores sentiment label, isImpolite flag, token list; has DynamoDB Stream enabled (NEW_IMAGE)
-- `aggregatesTable` -- keyed by reviewerID; stores impoliteCount (N) and banned (BOOL)
-- `errorsTable` -- keyed by errorID (UUID); dead-letter queue for reducer failures
+- `reviewsTable` composite key (reviewerID, asin); stores sentiment label, isImpolite flag, token list; has DynamoDB Stream enabled (NEW_IMAGE)
+- `aggregatesTable` keyed by reviewerID; stores impoliteCount (N) and banned (BOOL)
+- `errorsTable` keyed by errorID (UUID); dead-letter queue for reducer failures
 
 **SSM Parameter Store paths:**
 
@@ -150,15 +150,15 @@ All configuration originates in `src/settings.py` as the single source of truth.
 MiniStack has several issues when pushed at scale: it runs as a single process, never kills idle Lambda workers, and spawns threads without bounds, eventually hitting OS limit. Such situations cause discarding events. 
 
 Observations made
-- One upload burst of 500 reviews spawns 500 S3 notification threads, which in a three-hop pipeline becomes 1500 threads racing toward the OS limit.
-- Lambda reserved concurrency is set (`lambdaConcurrency=5` in settings, pushed to SSM, applied via `put-function-concurrency`) but ignored by MiniStack -- it spawns workers unconditionally.
+- One upload burst of 500 reviews spawns 500 S3 notification threads, which in a three-hop pipeline becomes 1500 threads racing toward the OS limit. 
+- Lambda reserved concurrency is set (`lambdaConcurrency=5` in settings, pushed to SSM, applied via `put-function-concurrency`) but ignored by MiniStack, it spawns workers unconditionally.
 - Without throttling, the pipeline chokes on its own throughput.
 
 Workaround is to upload reviews in configurable batches separated by a backpressure pause. After each batch it polls DynamoDB and waits for the majority of uploaded reviews to land before sending the next. This gives MiniStack's event delivery time to drain while keeping Lambda workers busy. Sustained throughput settles around 8-9 reviews per second.
 
 ### 3.6 Drain, convergence, and resume
 
-About 0.1% of S3 events vanish without a trace event object is in the bucket but  downstream Lambda never fires. A post-upload reconciliation pass scans all staging buckets and re-invokes the target Lambda for any review missing from DynamoDB, catching these stragglers.
+About 0.1% of S3 events vanish without a trace event. Object is in the bucket but downstream Lambda never fires. A post-upload reconciliation pass scans all staging buckets and re-invokes the target Lambda for any review missing from DynamoDB, catching lost events.
 
 If MiniStack crashes mid-pipeline, `--resume` picks up from the DynamoDB snapshot: it kills leftover workers, scans which reviews already made it through, and re-uploads only the missing ones.
 
