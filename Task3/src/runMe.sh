@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Single entry point for Task 3 serverless review analysis pipeline.
 # Usage:
 #   bash runMe.sh                  full pipeline (deploy + run dataset)
 #   bash runMe.sh --dedup             full pipeline with input dedup (removes
@@ -16,7 +15,7 @@ WORKSPACE_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
 # detect environment: JUPYTERHUB_USER = cluster, .venv = local, fallback = plain python3
 # MiniStack always listens on localhost:4566 on the same host;
-# the proxy URL (https://lbd.tuwien.ac.at/user/.../proxy/4566) triggers
+# proxy URL (https://lbd.tuwien.ac.at/user/.../proxy/4566) triggers
 # Jupyter CSRF protection on POST requests, so only localhost works for API calls.
 if [ -n "${JUPYTERHUB_USER:-}" ]; then
     PYTHON="python3"
@@ -225,14 +224,9 @@ _wireDdbStream() {
 
 # ---------------------------------------------------------------------------
 # _dedupInput <inputFile>
-# Amazon review datasets may contain the same (reviewerID, asin) pair under
-# multiple browse-node categories (e.g. a Kindle book also listed under
-# "Book").  The pipeline's DDB table uses (reviewerID, asin) as its composite
-# primary key, so duplicate keys cause a silent overwrite and the second
-# category is lost.  This one-shot pre-pass eliminates key-level duplicates
-# (keeping first occurrence) so the pipeline processes exactly one S3 object
-# per unique review.  Called only when --dedup is passed; not needed for
-# every run since the output is deterministic and can be reused.
+# Amazon review datasets may contain the same (reviewerID, asin) pair under multiple browse-node categories. 
+# Procedure keeps first occurrence, so pipeline processes exactly one S3 object
+# Called only when --dedup is passed; not needed for every run.
 # ---------------------------------------------------------------------------
 _dedupInput() {
     local inFile="$1"
@@ -265,14 +259,15 @@ print(f'  kept: {kept},  dropped (multi-category dups): {dropped}')
     echo "$outFile"
 }
 
+# default runner
 runFullPipeline() {
     local batchSize="${1:-500}"
     local doDedup="${2:-0}"
     echo "=== Running full pipeline (batch=${batchSize}) ==="
 
     local dataFile="${SCRIPT_DIR}/../data/reviews_devset.json"
-    # on the cluster, copy once from HDFS if not already local -- cheaper than
-    # pulling 58 MB from HDFS on every run
+    # on the cluster, copy once from HDFS if not already local
+    # cheaper than pulling 58 MB from HDFS on every run
     if [ -n "${JUPYTERHUB_USER:-}" ] && [ ! -f "$dataFile" ]; then
         echo "  Fetching reviews_devset.json from HDFS ..."
         mkdir -p "$(dirname "$dataFile")"
@@ -286,9 +281,7 @@ runFullPipeline() {
     totalLines=$(wc -l < "$dataFile" | tr -d ' ')
     echo "  Total reviews: ${totalLines}"
 
-    # upload in batches with DDB backpressure: wait until threshold fraction of
-    # uploaded reviews reaches DDB before sending the next batch. this prevents
-    # MiniStack S3-event thread fan-out from exhausting the system thread limit
+    # upload in batches with DDB backpressure, prevents MiniStack system thread limit
     # while keeping Lambdas busy (no hardcoded sleeps).
     local offset=0
     local target=0
@@ -325,11 +318,8 @@ print(uploaded)
         fi
         printf "[%s] uploaded %d / %d (sent=%d)\n" "$(date +%H:%M:%S)" "${offset}" "${totalLines}" "${batchUploaded}"
 
-        # backpressure + convergence: wait until threshold fraction of uploaded
-        # reviews reaches DDB before sending the next batch.  if DDB table
-        # counts (reviewsTable + aggregatesTable) are unchanged across two
-        # consecutive checks, the pipeline has converged -- either finished or
-        # permanently stalled -- and the loop breaks instead of timing out.
+        # backpressure + convergence: either finished or permanently stalled 
+        # the loop breaks instead of timing out.
         target=$(awk -v off="$offset" -v t="$pipelineBatchThreshold" 'BEGIN { printf "%d", off * t }')
         if [ "$target" -gt "$totalLines" ]; then
             target="$totalLines"
@@ -394,9 +384,7 @@ runResume() {
         hdfs dfs -get /dic_shared/amazon-reviews/full/reviews_devset.json "$dataFile"
     fi
 
-    # DDB done-set scan is the authoritative dedup for resume -- the
-    # composite key (reviewerID, asin) already handles multi-category
-    # duplicates by skipping any pair already in reviewsTable.
+    # DDB done-set scan is the authoritative dedup for resume 
     # No need to pre-dedup the input file on a second run.
     local totalLines
     totalLines=$(wc -l < "$dataFile" | tr -d ' ')
@@ -541,9 +529,6 @@ print(t['Table']['ItemCount'])
 # ---------------------------------------------------------------------------
 # _snapshotMetrics
 # Returns a compact string of DDB table counts for convergence detection.
-# When this string is unchanged across two consecutive checks, the pipeline
-# has converged (either finished or permanently stalled) and the wait loop
-# can break instead of timing out.
 # Format:  reviewsTable|aggregatesTable
 # ---------------------------------------------------------------------------
 _snapshotMetrics() {
@@ -561,9 +546,7 @@ _snapshotMetrics() {
 # _replayUnprocessed <expectedTotal>
 # Post-pipeline safety net: scan all three staging buckets once, find every
 # review whose (reviewerID, asin) is absent from DynamoDB, and re-invoke the
-# appropriate downstream Lambda.  Verbose logging shows each replay action.
-# After the single replay pass, poll with convergence detection until all
-# metrics stabilise (same snapshot twice) or DDB reaches expected total.
+# appropriate downstream Lambda.
 # ---------------------------------------------------------------------------
 _replayUnprocessed() {
     local expected="$1"
@@ -744,7 +727,6 @@ case "${1:-}" in
         # Kill stale Lambda workers left behind by a crashed previous run.
         # MiniStack spawns one process per S3 notification; after a crash those
         # workers stay alive but idle, blocking event delivery for new uploads.
-        # Cleaning them here lets MiniStack spawn fresh workers for the resume.
         staleWorkers=$(pgrep -f '_worker.py' 2>/dev/null | wc -l | tr -d ' ')
         if [ "${staleWorkers:-0}" -gt 0 ]; then
             echo "  Killing ${staleWorkers} stale Lambda workers from previous run ..."
