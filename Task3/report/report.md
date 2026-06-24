@@ -147,32 +147,21 @@ All configuration originates in `src/settings.py` as the single source of truth.
 
 ### 3.5 Batch feeding and backpressure
 
-It turns out that Ministack:
+MiniStack has a few rough edges when pushed to production scale: it runs as a single process, never reaps idle Lambda workers, and spawns threads without bounds -- eventually hitting the OS limit and discarding events. Three observations shaped the countermeasures:
 
-a) runs in a single PID spawning sub process\
-b) does not free lambdas resources correctly.\
-c) doesn't autobalance on input, hits thread limit and discards events
+- One upload burst of 500 reviews spawns 500 S3 notification threads, which in a three-hop pipeline becomes 1500 threads racing toward the limit.
+- Lambda reserved concurrency is set but ignored by MiniStack -- it spawns workers unconditionally.
+- Without throttling, the pipeline chokes on its own throughput.
 
-All these problems require extra balancing that implemented as below
+The runner works around this by uploading reviews in configurable batches separated by a backpressure pause. After each batch it polls DynamoDB and waits for the majority of uploaded reviews to land before sending the next. This gives MiniStack's event delivery time to drain while keeping Lambda workers busy. Sustained throughput settles around 8-9 reviews per second.
 
-`runMe.sh` script reads `reviews_devset.json` and uploads reviews in configurable batches (default 500). After each batch, it polls `reviewsTable.ItemCount` every 3 seconds and waits until the DynamoDB count reaches `pipelineBatchThreshold` (0.9) times the uploaded count. 
+### 3.6 Drain, convergence, and resume
 
-This backpressure prevents MiniStack's S3 event delivery threads from exhausting the system thread limit , it is seen as `RuntimeError: can't start new thread` at high throughput.
-And usually happens when Ministack
-spawns next Python thread per S3 ObjectCreated notification.
+About 0.1% of S3 events vanish without a trace -- the object sits in the bucket but the downstream Lambda never fires. A post-upload reconciliation pass scans all staging buckets and re-invokes the target Lambda for any review missing from DynamoDB, catching these stragglers.
 
-Lambda reserved concurrency is set to 5 per function, capping total concurrent executions at 20 across all four Lambdas. 
-These numbers keeps the MiniStack process within the macOS per-process thread limit  with reasonable speed, and should be adjusted in settings for other platforms. Actual sustained throughput measured is ~8.5 reviews/second.
+If MiniStack crashes mid-pipeline, `--resume` picks up from the DynamoDB snapshot: it kills leftover workers, scans which reviews already made it through, and re-uploads only the missing ones. Same backpressure, same drain.
 
-### 3.6 Drain and resume
-
-During all experiments, roughly 0.1% of events just disappear, for no reason. We could not isolate problem , so added replaying routine to compensate losses. The event is in S3 but it just not fired next. 
-
-After the final batch, `_replayUnprocessed` polls DynamoDB until all uploaded reviews have landed, then scans all three staging buckets and re-delivers any stale objects whose `(reviewerID, asin)` pair is missing from DynamoDB. 
-
-Runner supports `--resume` mode for crash recovery: it scans `reviewsTable` for all already-processed `(reviewerID, asin)` pairs, clears stale staging objects, and uploads only missing reviews with the same backpressure logic.
-
-A convergence-based pipe breaker monitors `reviewsTable` and `aggregatesTable` item counts in a loop. When the same snapshot appears twice in a row, the pipeline declares convergence -- either every review landed safely in DynamoDB, or MiniStack gave up delivering events. Either way, the script stops waiting and moves on to replay or resume.
+Bridging both cases is a convergence-based pipe breaker. It polls final table counts in a loop. When the same snapshot appears twice, the pipeline converges -- either every review landed in DynamoDB, or MiniStack stopped delivering events. No fixed timeouts: the criterion adapts to whatever throughput the machine can sustain.
 
 ```mermaid
 flowchart TD
