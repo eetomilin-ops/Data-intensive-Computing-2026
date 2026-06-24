@@ -38,7 +38,7 @@ Task description requires a five-step processing pipeline applied to each review
 | 1 | At least three Lambda functions (preprocessing, profanity-check, sentiment-analysis) | Four Lambdas deployed: preprocessing, profanity, sentiment, plus reducer for steps 4-5 |
 | 2 | Chain starts on S3 object insertion | `runMe.sh` uploads each review as a JSON object to `review-app-input`; S3 ObjectCreated triggers preprocessing |
 | 3 | Subsequent invocations triggered by S3 bucket events and/or DynamoDB events | Each inter-stage handoff uses S3 `PutObject` triggering the next Lambda via `LambdaFunctionConfigurations`; the final reducer is triggered by DynamoDB Stream on `reviewsTable` |
-| 4 | Consider `summary`, `reviewText`, and `overall` fields | All three fields are preserved through every pipeline stage via dict spread (`{**review, ...}`). `summary` and `reviewText` are combined for tokenization, profanity detection, and sentiment analysis; `overall` is carried through the Lambda chain but not stored in the final DynamoDB record (only `reviewerID`, `asin`, `sentiment`, `isImpolite`, `badWord`, and `tokens` are persisted) |
+| 4 | Consider `summary`, `reviewText`, and `overall` fields | All three fields are preserved through every pipeline stage via dict spread. `summary` and `reviewText` are combined for tokenization, profanity detection, and sentiment analysis; `overall` is stored in DynamoDB alongside a derived `userSentiment` label (1-2=negative, 3=neutral, 4-5=positive) for dual-sentiment reporting |
 | 5 | Configuration from SSM Parameter Store | `pushSettings.sh` reads `settings.py` and pushes all values to SSM under `/review-app/`; every Lambda calls `getSsmParam()` at invocation time |
 | 6 | Automated integration tests for all five pipeline steps | 15 pytest tests: 11 functional (pure logic) + 4 integration (MiniStack end-to-end), covering preprocessing, profanity, sentiment, impolite counting, and ban enforcement |
 
@@ -149,24 +149,25 @@ All configuration originates in `src/settings.py` as the single source of truth.
 
 MiniStack has several issues when pushed at scale: it runs as a single process, never kills idle Lambda workers, and spawns threads without bounds, eventually hitting OS limit. Such situations cause discarding events. 
 
-Three observations shaped the countermeasures:
-
-- One upload burst of 500 reviews spawns 500 S3 notification threads, which in a three-hop pipeline becomes 1500 threads racing toward the limit.
+Observations made
+- One upload burst of 500 reviews spawns 500 S3 notification threads, which in a three-hop pipeline becomes 1500 threads racing toward the OS limit.
 - Lambda reserved concurrency is set (`lambdaConcurrency=5` in settings, pushed to SSM, applied via `put-function-concurrency`) but ignored by MiniStack -- it spawns workers unconditionally.
 - Without throttling, the pipeline chokes on its own throughput.
 
-The runner works around this by uploading reviews in configurable batches separated by a backpressure pause. After each batch it polls DynamoDB and waits for the majority of uploaded reviews to land before sending the next. This gives MiniStack's event delivery time to drain while keeping Lambda workers busy. Sustained throughput settles around 8-9 reviews per second.
+Workaround is to upload reviews in configurable batches separated by a backpressure pause. After each batch it polls DynamoDB and waits for the majority of uploaded reviews to land before sending the next. This gives MiniStack's event delivery time to drain while keeping Lambda workers busy. Sustained throughput settles around 8-9 reviews per second.
 
 ### 3.6 Drain, convergence, and resume
 
-About 0.1% of S3 events vanish without a trace -- the object sits in the bucket but the downstream Lambda never fires. A post-upload reconciliation pass scans all staging buckets and re-invokes the target Lambda for any review missing from DynamoDB, catching these stragglers.
+About 0.1% of S3 events vanish without a trace event object is in the bucket but  downstream Lambda never fires. A post-upload reconciliation pass scans all staging buckets and re-invokes the target Lambda for any review missing from DynamoDB, catching these stragglers.
 
-If MiniStack crashes mid-pipeline, `--resume` picks up from the DynamoDB snapshot: it kills leftover workers, scans which reviews already made it through, and re-uploads only the missing ones. Same backpressure, same drain.
+If MiniStack crashes mid-pipeline, `--resume` picks up from the DynamoDB snapshot: it kills leftover workers, scans which reviews already made it through, and re-uploads only the missing ones.
 
-Bridging both cases is a convergence-based pipe breaker. It polls final table counts in a loop. When the same snapshot appears twice, the pipeline converges -- either every review landed in DynamoDB, or MiniStack stopped delivering events. No fixed timeouts: the criterion adapts to whatever throughput the machine can sustain.
+Bridging both cases is a convergence-based pipe breaker. It polls final table counts in a loop. When the same snapshot appears twice, pipeline converges : either every review landed in DynamoDB, or MiniStack stopped delivering events. No fixed timeouts: the criterion adapts to whatever throughput the machine can sustain.
 
+
+Common workflow with ministack
 ```mermaid
-flowchart TD
+flowchart LR
     S([start]) --> DEPLOY[deploy resources]
     DEPLOY --> RUN[upload batches<br/>with backpressure]
     RUN --> CONVERGE{snapshot<br/>unchanged x2?}
