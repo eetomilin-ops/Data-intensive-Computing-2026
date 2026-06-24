@@ -7,7 +7,8 @@
 
 ## 1. Introduction
 
-This assignment implements an event-driven serverless application on AWS (emulated via MiniStack) to perform profanity checking and sentiment analysis of Amazon customer reviews. The system processes reviews through a staged pipeline of four Lambda functions, triggered entirely by S3 bucket events and DynamoDB stream events, with all configuration managed through the SSM parameter store. Project is optimized per task requirements and focused on throughput or accuracy KPIs.
+This assignment implements an event-driven serverless application on AWS (emulated via MiniStack) to perform profanity checking and sentiment analysis of Amazon customer reviews.
+System processes reviews through a staged pipeline of four Lambda functions, triggered entirely by S3 bucket events and DynamoDB stream events, with all configuration managed through the SSM parameter store. Project is optimized per task requirements and focused on throughput or accuracy KPIs.
 
 ## 2. Problem Overview
 
@@ -146,7 +147,8 @@ All configuration originates in `src/settings.py` as the single source of truth.
 
 ### 3.5 Batch feeding and backpressure
 
-It turns out that Ministack 
+It turns out that Ministack:
+
 a) runs in a single PID spawning sub process\
 b) does not free lambdas resources correctly.\
 c) doesn't autobalance on input, hits thread limit and discards events
@@ -169,6 +171,22 @@ During all experiments, roughly 0.1% of events just disappear, for no reason. We
 After the final batch, `_replayUnprocessed` polls DynamoDB until all uploaded reviews have landed, then scans all three staging buckets and re-delivers any stale objects whose `(reviewerID, asin)` pair is missing from DynamoDB. 
 
 Runner supports `--resume` mode for crash recovery: it scans `reviewsTable` for all already-processed `(reviewerID, asin)` pairs, clears stale staging objects, and uploads only missing reviews with the same backpressure logic.
+
+A convergence-based pipe breaker tracks `reviewsTable` and `aggregatesTable` item counts in a loop. When the same snapshot appears twice consecutively, the pipeline is considered converged -- either all reviews have been processed or MiniStack has stopped delivering events (hung/discarded). This replaces fixed timeouts with a data-driven stopping criterion that adapts to actual throughput.
+
+```mermaid
+flowchart TD
+    S([start]) --> DEPLOY[deploy resources]
+    DEPLOY --> RUN[upload batches<br/>with backpressure]
+    RUN --> CONVERGE{snapshot<br/>unchanged x2?}
+    CONVERGE -->|no| RUN
+    CONVERGE -->|yes| REPLAY[_replayUnprocessed<br/>scan staging buckets]
+    REPLAY --> CHECK{all reviews<br/>in DDB?}
+    CHECK -->|no| RESUME[--resume<br/>kill stale workers<br/>re-upload missing]
+    RESUME --> RUN
+    CHECK -->|yes| METRICS[dumpMetrics]
+    METRICS --> E([done])
+```
 
 ### 3.7 Testing
 
