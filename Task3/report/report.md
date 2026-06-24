@@ -172,7 +172,7 @@ After the final batch, `_replayUnprocessed` polls DynamoDB until all uploaded re
 
 Runner supports `--resume` mode for crash recovery: it scans `reviewsTable` for all already-processed `(reviewerID, asin)` pairs, clears stale staging objects, and uploads only missing reviews with the same backpressure logic.
 
-A convergence-based pipe breaker acts as the pipeline's heartbeat monitor, polling `reviewsTable` and `aggregatesTable` item counts in a loop. When the same snapshot stares back twice in a row, the pipeline declares convergence -- either every review found its way home, or MiniStack quietly went on strike. No fixed timeouts, no blind hope: just a data-driven shrug that says "nothing is moving, time to replay or resume."
+A convergence-based pipe breaker monitors `reviewsTable` and `aggregatesTable` item counts in a loop. When the same snapshot appears twice in a row, the pipeline declares convergence -- either every review landed safely in DynamoDB, or MiniStack gave up delivering events. Either way, the script stops waiting and moves on to replay or resume.
 
 ```mermaid
 flowchart TD
