@@ -248,10 +248,12 @@ Wall time: approximately 2.5 hours , estimated processing ~8.5 reviews/second, s
 
 ## 5. Conclusions
 
-Implementation satisfies all assignment requirements: four Lambda functions form a complete event-driven chain triggered exclusively by S3 ObjectCreated events and DynamoDB Stream events.
+Implementation satisfies assignment requirements: four Lambda functions form a complete event-driven chain triggered exclusively by S3 ObjectCreated events and DynamoDB Stream events.
 
 S3-staged design, introduce additional storage overhead compared to direct Lambda-to-Lambda invocation, but provides a clear intermediate states and monitoring.
-Proposed backpressure mechanism and resume capability address MiniStack-specific operational challenges without altering the serverless architecture. 
+
+Proposed backpressure mechanism and resume capability address MiniStack-specific operational challenges without altering the serverless architecture.
+More on challenges tackled and resolved is in `worklog` section of Readme.md 
 
 The shared `common.py` module and centralized `settings.py` keep the codebase maintainable and consistent across all four Lambda functions.
 
